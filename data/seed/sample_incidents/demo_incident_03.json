@@ -1,0 +1,11 @@
+{
+  "incident_id": "INC-2024-0801",
+  "title": "CDN cache purge caused origin server overload",
+  "service": "content-delivery",
+  "severity": "P1",
+  "timestamp": "2024-03-10T11:00:00Z",
+  "root_cause": "Accidental full CDN cache purge triggered a thundering herd of requests to origin servers, overwhelming capacity",
+  "resolution": "Rate-limited origin requests. Implemented gradual cache warm-up procedure. Added cache purge confirmation gate for full purges.",
+  "similarity_reason": "CDN-related incident, origin overload pattern, sudden traffic spike to backend",
+  "summary": "A full CDN cache purge was accidentally triggered during a routine deployment, causing all cached content to be re-requested from origin servers simultaneously. Origin servers hit 100% CPU and began returning 502 errors. Resolved by rate-limiting requests and implementing gradual cache warm-up."
+}

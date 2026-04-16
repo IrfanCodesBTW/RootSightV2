@@ -1,0 +1,27 @@
+{
+  "service": "user-service",
+  "scenario": "Database connection pool exhaustion",
+  "logs": [
+    {"timestamp": "2024-03-01T16:00:00Z", "level": "INFO", "service": "user-service", "message": "Config update applied: db.pool.maxConnections changed from 50 to 10", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:00:15Z", "level": "INFO", "service": "user-service", "message": "Database connection pool reinitialised with max=10 connections", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:05:00Z", "level": "INFO", "service": "user-service", "message": "GET /api/users/profile processing — pool available: 8/10", "metadata": {"host": "prod-user-01", "trace_id": "tr-u001"}},
+    {"timestamp": "2024-03-01T16:10:00Z", "level": "INFO", "service": "user-service", "message": "GET /api/users/profile processing — pool available: 4/10", "metadata": {"host": "prod-user-02", "trace_id": "tr-u002"}},
+    {"timestamp": "2024-03-01T16:15:00Z", "level": "WARN", "service": "user-service", "message": "Connection pool nearing capacity — pool available: 1/10", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:16:00Z", "level": "ERROR", "service": "user-service", "message": "Cannot acquire connection from pool — pool exhausted (0/10 available)", "metadata": {"host": "prod-user-01", "trace_id": "tr-u003"}},
+    {"timestamp": "2024-03-01T16:16:01Z", "level": "ERROR", "service": "user-service", "message": "Cannot acquire connection from pool — pool exhausted (0/10 available)", "metadata": {"host": "prod-user-02", "trace_id": "tr-u004"}},
+    {"timestamp": "2024-03-01T16:16:02Z", "level": "ERROR", "service": "user-service", "message": "Cannot acquire connection from pool — pool exhausted (0/10 available)", "metadata": {"host": "prod-user-03", "trace_id": "tr-u005"}},
+    {"timestamp": "2024-03-01T16:16:05Z", "level": "ERROR", "service": "user-service", "message": "Authentication request failed: DB connection timeout after 30s for user usr-44821", "metadata": {"host": "prod-user-01", "trace_id": "tr-u006"}},
+    {"timestamp": "2024-03-01T16:16:08Z", "level": "ERROR", "service": "user-service", "message": "Authentication request failed: DB connection timeout after 30s for user usr-33901", "metadata": {"host": "prod-user-02", "trace_id": "tr-u007"}},
+    {"timestamp": "2024-03-01T16:16:10Z", "level": "ERROR", "service": "auth-gateway", "message": "Login endpoint returning 504 Gateway Timeout — upstream user-service unresponsive", "metadata": {"host": "prod-auth-01"}},
+    {"timestamp": "2024-03-01T16:17:00Z", "level": "ERROR", "service": "api-gateway", "message": "Circuit breaker triggered for user-service route /api/users — 15 consecutive timeouts", "metadata": {"host": "prod-gateway-01"}},
+    {"timestamp": "2024-03-01T16:17:30Z", "level": "ERROR", "service": "user-service", "message": "Deadlock detected in connection pool — 8 waiting threads, 10 connections held", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:18:00Z", "level": "WARN", "service": "notification-service", "message": "Unable to fetch user preferences — user-service returning 503. Falling back to defaults.", "metadata": {"host": "prod-notify-01"}},
+    {"timestamp": "2024-03-01T16:19:00Z", "level": "INFO", "service": "user-service", "message": "PagerDuty alert triggered: INC-2024-0723 — High error rate on user-service authentication", "metadata": {"host": "prod-monitor-01"}},
+    {"timestamp": "2024-03-01T16:21:00Z", "level": "INFO", "service": "user-service", "message": "On-call engineer acknowledged alert — investigating connection pool", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:25:00Z", "level": "INFO", "service": "user-service", "message": "Root cause identified: db.pool.maxConnections incorrectly set to 10 (was 50)", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:28:00Z", "level": "INFO", "service": "user-service", "message": "Config rollback applied: db.pool.maxConnections restored to 50", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:28:30Z", "level": "INFO", "service": "user-service", "message": "Connection pool reinitialised with max=50 — waiting threads releasing", "metadata": {"host": "prod-user-01"}},
+    {"timestamp": "2024-03-01T16:29:00Z", "level": "INFO", "service": "user-service", "message": "Authentication endpoint healthy — error rate dropping", "metadata": {"host": "prod-user-02"}},
+    {"timestamp": "2024-03-01T16:32:00Z", "level": "INFO", "service": "user-service", "message": "Error rate normalized — incident INC-2024-0723 resolved. Duration: 16 minutes.", "metadata": {"host": "prod-monitor-01"}}
+  ]
+}

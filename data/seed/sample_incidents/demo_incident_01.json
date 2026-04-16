@@ -1,0 +1,11 @@
+{
+  "incident_id": "INC-2024-0612",
+  "title": "Stripe connection failures after payment-service deploy",
+  "service": "payment-service",
+  "severity": "P1",
+  "timestamp": "2024-02-20T09:45:00Z",
+  "root_cause": "Hardcoded Stripe endpoint URL overwritten by config change in deploy v2.13.5",
+  "resolution": "Rollback to v2.13.4 + config fix in v2.13.6. Added Stripe connectivity health check to deploy pipeline.",
+  "similarity_reason": "Same service, same error pattern (connection refused to Stripe), post-deploy trigger",
+  "summary": "Payment-service deployment v2.13.5 introduced a configuration change that pointed the Stripe gateway URL to an internal staging endpoint. All checkout requests failed with connection refused errors. Resolved by rollback within 18 minutes."
+}

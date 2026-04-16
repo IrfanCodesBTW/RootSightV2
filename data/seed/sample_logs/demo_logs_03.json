@@ -1,0 +1,28 @@
+{
+  "service": "content-delivery",
+  "scenario": "CDN cache purge causing origin server overload",
+  "logs": [
+    {"timestamp": "2024-03-10T10:55:00Z", "level": "INFO", "service": "cdn-manager", "message": "Full cache purge initiated by deploy-bot for content-delivery deployment v3.2.1", "metadata": {"host": "prod-cdn-admin"}},
+    {"timestamp": "2024-03-10T10:55:30Z", "level": "INFO", "service": "cdn-manager", "message": "CDN cache purge completed — 4.2M cached objects invalidated across 12 PoPs", "metadata": {"host": "prod-cdn-admin"}},
+    {"timestamp": "2024-03-10T10:55:35Z", "level": "WARN", "service": "content-delivery", "message": "Cache invalidation acknowledged — expect elevated origin traffic during warm-up", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T10:55:40Z", "level": "WARN", "service": "content-delivery", "message": "Incoming request rate spike detected: 0 → 28,000 req/s to origin servers", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T10:55:45Z", "level": "ERROR", "service": "content-delivery", "message": "Origin server CPU usage: 98% — saturation threshold exceeded", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T10:55:45Z", "level": "ERROR", "service": "content-delivery", "message": "Origin server CPU usage: 97% — saturation threshold exceeded", "metadata": {"host": "prod-origin-02"}},
+    {"timestamp": "2024-03-10T10:55:50Z", "level": "ERROR", "service": "content-delivery", "message": "Request queue depth exceeded 10,000 — requests being dropped", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T10:56:00Z", "level": "ERROR", "service": "content-delivery", "message": "Origin returning 502 Bad Gateway — worker processes exhausted", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T10:56:00Z", "level": "ERROR", "service": "content-delivery", "message": "Origin returning 502 Bad Gateway — worker processes exhausted", "metadata": {"host": "prod-origin-02"}},
+    {"timestamp": "2024-03-10T10:56:05Z", "level": "ERROR", "service": "cdn-edge", "message": "CDN edge node us-east-1 receiving 502 from origin — serving stale content where available", "metadata": {"host": "cdn-edge-us-east-1"}},
+    {"timestamp": "2024-03-10T10:56:05Z", "level": "ERROR", "service": "cdn-edge", "message": "CDN edge node eu-west-1 receiving 502 from origin — no stale content available (just purged)", "metadata": {"host": "cdn-edge-eu-west-1"}},
+    {"timestamp": "2024-03-10T10:56:10Z", "level": "ERROR", "service": "web-frontend", "message": "Static asset loading failing — CDN returning 502 for CSS/JS bundles", "metadata": {"host": "prod-web-01"}},
+    {"timestamp": "2024-03-10T10:56:15Z", "level": "ERROR", "service": "web-frontend", "message": "Homepage rendering broken — critical assets unavailable", "metadata": {"host": "prod-web-02"}},
+    {"timestamp": "2024-03-10T10:57:00Z", "level": "INFO", "service": "content-delivery", "message": "PagerDuty alert triggered: INC-2024-0801 — CDN origin 502 errors, site unavailable", "metadata": {"host": "prod-monitor-01"}},
+    {"timestamp": "2024-03-10T10:58:00Z", "level": "INFO", "service": "content-delivery", "message": "On-call engineer acknowledged — investigating origin CPU spike", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T11:00:00Z", "level": "INFO", "service": "content-delivery", "message": "Root cause identified: full cache purge triggered thundering herd of 28k req/s to underpowered origin", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T11:02:00Z", "level": "INFO", "service": "cdn-manager", "message": "Rate limiter applied: origin requests capped at 5,000 req/s", "metadata": {"host": "prod-cdn-admin"}},
+    {"timestamp": "2024-03-10T11:02:30Z", "level": "INFO", "service": "content-delivery", "message": "Origin CPU falling: 98% → 65% — request queue draining", "metadata": {"host": "prod-origin-01"}},
+    {"timestamp": "2024-03-10T11:04:00Z", "level": "INFO", "service": "content-delivery", "message": "Origin recovering — 502 error rate dropping (current: 12%)", "metadata": {"host": "prod-origin-02"}},
+    {"timestamp": "2024-03-10T11:06:00Z", "level": "INFO", "service": "cdn-edge", "message": "CDN cache hit rate recovering — warm-up in progress (current: 42%)", "metadata": {"host": "cdn-edge-us-east-1"}},
+    {"timestamp": "2024-03-10T11:10:00Z", "level": "INFO", "service": "content-delivery", "message": "CDN cache hit rate restored to 85% — origin load normalising", "metadata": {"host": "prod-monitor-01"}},
+    {"timestamp": "2024-03-10T11:12:00Z", "level": "INFO", "service": "content-delivery", "message": "Incident INC-2024-0801 resolved — all services nominal. Duration: 17 minutes.", "metadata": {"host": "prod-monitor-01"}}
+  ]
+}

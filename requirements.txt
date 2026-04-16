@@ -1,0 +1,30 @@
+# =============================================================================
+# RootSight — Python Dependencies
+# =============================================================================
+
+# --- Core ---
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+httpx>=0.27.0
+
+# --- AI / LLM ---
+google-genai>=1.0.0
+
+# --- Vector Store ---
+faiss-cpu>=1.7.4
+numpy>=1.24.0
+
+# --- UI ---
+streamlit>=1.30.0
+
+# --- Webhook Server (optional) ---
+fastapi>=0.110.0
+uvicorn>=0.27.0
+
+# --- Logging & Formatting ---
+rich>=13.0.0
+
+# --- Testing ---
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

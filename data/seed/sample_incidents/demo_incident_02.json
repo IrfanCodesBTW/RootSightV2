@@ -1,0 +1,11 @@
+{
+  "incident_id": "INC-2024-0723",
+  "title": "Database connection pool exhaustion on user-service",
+  "service": "user-service",
+  "severity": "P2",
+  "timestamp": "2024-03-01T16:30:00Z",
+  "root_cause": "Connection pool max size reduced from 50 to 10 via config change, causing exhaustion under normal load",
+  "resolution": "Reverted connection pool size to 50. Added connection pool monitoring alerts. Implemented connection pool auto-scaling.",
+  "similarity_reason": "Database connection pool exhaustion pattern, config change trigger, cascading timeout errors",
+  "summary": "User-service experienced cascading timeouts after a configuration update reduced the database connection pool max size from 50 to 10. Under normal traffic, all connections were consumed causing 504 timeouts for authentication and profile endpoints. Resolved by reverting the config change."
+}
