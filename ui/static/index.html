@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>RootSight | Tactical Brutalist Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&amp;family=Inter:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#D48C6A", // Polished Copper
+                        "background": "#120D0C", // Deep Espresso
+                        "surface": "#1A1412",
+                        "surface-accent": "#2D2421",
+                        "outline-variant": "#4A3B36",
+                        "patina": "#5E7B7B", // Aged Patina (Teal-Grey)
+                        "on-surface": "#EAE3E0",
+                        "on-surface-variant": "#B09E97",
+                        "error": "#E55B44",
+                    },
+                    "fontFamily": {
+                        "headline": ["Archivo"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["IBM Plex Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { @apply bg-background text-on-surface font-body overflow-hidden h-screen; }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+        }
+        .mono-data { font-family: 'IBM Plex Mono', monospace; }
+        .brutalist-tile {
+            @apply border-r border-b border-outline-variant/40 bg-surface;
+        }
+        .patina-border {
+            border-color: #5E7B7B44;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #120D0C; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #5E7B7B; }
+        .asymmetric-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body class="selection:bg-primary/30">
+    <div class="asymmetric-grid border-t border-l border-outline-variant/40">
+        <header class="col-span-3 brutalist-tile flex items-center justify-between px-6 h-14 z-50">
+            <div class="flex items-center gap-8">
+                <span
+                    class="text-xl font-black tracking-tighter text-primary font-headline italic uppercase">ROOTSIGHT</span>
+                <div class="flex items-center gap-4 border-l border-outline-variant/30 pl-8">
+                    <span
+                        class="px-2 py-0.5 bg-error/10 text-error border border-error/30 text-[9px] font-black uppercase tracking-widest">INC-402
+                        // SEV-1</span>
+                    <h1 class="text-sm font-headline font-black uppercase tracking-tight text-on-surface italic">
+                        Global Edge Cache Poisoning <span class="text-primary">&amp;</span> Latency Spike
+                    </h1>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center bg-background border border-patina/20 px-3 py-1">
+                    <span class="material-symbols-outlined text-primary text-xs mr-2">search</span>
+                    <input
+                        class="bg-transparent border-none focus:ring-0 text-[10px] w-48 placeholder:text-on-surface-variant/40 mono-data uppercase tracking-wider"
+                        placeholder="SEARCH SYSTEM..." type="text" />
+                </div>
+                <div class="h-6 w-6 border border-primary/20 grayscale contrast-125">
+                    <img alt="Operator Profile"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBatZJyN8KfHiSnd7XkpDkJdZkIOvKEKRTS-i_6ZmmzPUL7s-JWOnZU4Qy9fXtij0t8zWFUaB8XlSCSJ84izDju-OkG-95XuvWi5WXnWF_awoRcaisG0nmV_bTooqTtDTAZUwMpeKAoWGzXQUSuPAQwew66RQnE4KlMi6RwHiNsmi5yYeqB4UzXi4GVmTR5qhUUiMirt_543DvNFeqtr70L-jyWg8uEquqmjLUHX56HikDHx0tug85wVBCSQ8eY_natt8SaNYkyZzA" />
+                </div>
+            </div>
+        </header>
+        <aside class="brutalist-tile flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-patina/20 flex items-center justify-between bg-background/50">
+                <span class="text-[10px] text-primary font-bold uppercase tracking-[0.2em]">Investigation Flow</span>
+                <span class="material-symbols-outlined text-primary text-sm">analytics</span>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                <div class="space-y-4">
+                    <div class="flex gap-3">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined text-primary text-sm"
+                                style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <div class="w-px h-8 bg-outline-variant/30"></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-primary font-bold tracking-widest uppercase">Ingestion</div>
+                            <div class="text-[9px] text-on-surface-variant/60 mono-data">COMPLETE 14:00</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined text-primary text-sm"
+                                style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <div class="w-px h-8 bg-outline-variant/30"></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-primary font-bold tracking-widest uppercase">Normalization
+                            </div>
+                            <div class="text-[9px] text-on-surface-variant/60 mono-data">COMPLETE 14:02</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined text-primary text-sm"
+                                style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <div class="w-px h-8 bg-outline-variant/30"></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-primary font-bold tracking-widest uppercase">Timeline</div>
+                            <div class="text-[9px] text-on-surface-variant/60 mono-data">COMPLETE 14:04</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined text-primary text-sm">troubleshoot</span>
+                            <div class="w-px h-8 bg-patina/30"></div>
+                        </div>
+                        <div class="bg-primary/10 border border-primary/20 p-2 -mt-1 w-full">
+                            <div class="text-[10px] text-primary font-black tracking-widest uppercase">RCA ACTIVE</div>
+                            <div class="text-[9px] text-on-surface-variant mono-data">PROCESSING...</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 opacity-30">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">pending</span>
+                            <div class="w-px h-8 bg-outline-variant/30"></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-on-surface-variant font-bold tracking-widest uppercase">Impact
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 opacity-30">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">shield</span>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-on-surface-variant font-bold tracking-widest uppercase">
+                                Mitigation</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-8 border-t border-outline-variant/20">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface-variant mb-6">Sequence
+                    </h3>
+                    <div class="relative pl-4 border-l border-outline-variant/30 space-y-6">
+                        <div class="relative">
+                            <div
+                                class="absolute -left-[21px] top-1 w-2.5 h-2.5 bg-primary rounded-full outline outline-4 outline-background">
+                            </div>
+                            <div class="mono-data text-[9px] text-on-surface-variant">14:02:01</div>
+                            <div class="text-[10px] text-on-surface font-bold uppercase tracking-tight">Cache Update
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <div
+                                class="absolute -left-[21px] top-1 w-2.5 h-2.5 bg-primary rounded-full outline outline-4 outline-background">
+                            </div>
+                            <div class="mono-data text-[9px] text-on-surface-variant">14:03:15</div>
+                            <div class="text-[10px] text-on-surface font-bold uppercase tracking-tight">5xx Spike</div>
+                        </div>
+                        <div class="relative">
+                            <div
+                                class="absolute -left-[21px] top-1 w-2.5 h-2.5 bg-error rounded-full outline outline-4 outline-background">
+                            </div>
+                            <div class="mono-data text-[9px] text-error font-bold">14:04:42</div>
+                            <div class="text-[10px] text-error font-bold uppercase tracking-tight">Critical Path</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <main class="brutalist-tile overflow-y-auto custom-scrollbar p-0 bg-background">
+            <div
+                class="sticky top-0 z-20 bg-background/80 backdrop-blur p-6 border-b border-patina/30 flex justify-between items-end">
+                <div>
+                    <h2 class="text-[10px] font-headline font-black uppercase tracking-[0.4em] text-patina mb-2">
+                        Situation Room // RCA Hypothesis</h2>
+                    <p class="text-2xl font-light text-on-surface-variant">Isolated event pattern in the edge layer.</p>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span
+                        class="text-[9px] uppercase tracking-[0.3em] text-on-surface-variant font-bold mb-1">Confidence</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-3xl font-headline font-black text-primary italic leading-none">92%</span>
+                        <span class="material-symbols-outlined text-primary text-xl"
+                            style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-8 space-y-10">
+                <div class="border border-patina/40 bg-surface/50 p-8 shadow-2xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <span class="material-symbols-outlined text-[120px]">troubleshoot</span>
+                    </div>
+                    <div class="flex justify-between items-start mb-8">
+                        <div class="max-w-xl">
+                            <h3
+                                class="text-3xl font-headline font-black text-on-surface uppercase italic tracking-tight mb-3">
+                                Redis Cache Eviction Storm</h3>
+                            <p class="text-sm text-on-surface-variant leading-relaxed">Memory saturation on cluster
+                                <code
+                                    class="mono-data bg-background px-2 py-0.5 border border-outline-variant/20 text-primary text-xs">prod-cache-04</code>.
+                                Eviction policies triggered cascading latency across all US-East nodes.</p>
+                        </div>
+                        <div class="text-right border-l border-patina/20 pl-8">
+                            <div class="text-primary text-5xl font-headline font-black italic leading-none">85%</div>
+                            <span
+                                class="text-[9px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">Likelihood</span>
+                        </div>
+                    </div>
+                    <div class="bg-background border-l-2 border-primary p-4 mono-data text-[11px] leading-relaxed mb-8">
+                        <div
+                            class="flex items-center gap-4 text-on-surface-variant/40 mb-3 border-b border-outline-variant/10 pb-2">
+                            <span class="text-primary font-bold">EVENT LOGS</span>
+                            <span>14:04:22.401</span>
+                        </div>
+                        <div class="space-y-1 text-on-surface/80">
+                            <div class="flex gap-3">
+                                <span class="font-bold text-error opacity-80">[CRIT]</span>
+                                <span>memory-limit-exceeded: Evicting persistent keys [Policy: allkeys-lru]</span>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="font-bold text-primary opacity-80">[WARN]</span>
+                                <span>replication-buffer-overflow: slave [10.0.4.12]</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button
+                            class="px-5 py-2.5 bg-primary text-background text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white transition-all">Deep
+                            Trace Analysis</button>
+                        <button
+                            class="px-5 py-2.5 border border-patina/40 text-on-surface text-[10px] font-black uppercase tracking-[0.2em] hover:bg-surface transition-all">Isolate
+                            Cluster</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-4">
+                    <div
+                        class="bg-surface border border-outline-variant/20 p-4 flex justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
+                        <div class="flex items-center gap-4">
+                            <span class="w-1 h-1 bg-patina"></span>
+                            <h3 class="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                                Secondary: Upstream BGP Route Leak</h3>
+                        </div>
+                        <span class="mono-data text-xs text-on-surface-variant">12%</span>
+                    </div>
+                </div>
+                <div class="pt-10 space-y-6">
+                    <div class="flex items-center gap-4">
+                        <h2 class="text-[10px] font-black uppercase tracking-[0.4em] text-patina">Historical Data</h2>
+                        <div class="flex-1 h-px bg-patina/10"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-px bg-outline-variant/20 border border-outline-variant/20">
+                        <div class="bg-surface p-6 hover:bg-surface-accent transition-colors cursor-pointer group">
+                            <div class="flex items-center justify-between mb-4">
+                                <span
+                                    class="mono-data text-[9px] text-on-surface-variant border border-outline-variant/40 px-2">INC-288</span>
+                                <span class="text-[9px] text-primary font-black tracking-[0.2em]">98% MATCH</span>
+                            </div>
+                            <h4
+                                class="text-xl font-headline font-black uppercase italic tracking-tight text-on-surface group-hover:text-primary transition-colors">
+                                Shared Redis Cluster OOM</h4>
+                            <div class="mt-4 flex items-center justify-between">
+                                <span
+                                    class="text-[9px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 font-bold uppercase">PURGE
+                                    RESOLVED</span>
+                                <span
+                                    class="text-[9px] text-on-surface-variant/40 font-bold uppercase tracking-widest">APR
+                                    2024</span>
+                            </div>
+                        </div>
+                        <div class="bg-surface p-6 hover:bg-surface-accent transition-colors cursor-pointer group">
+                            <div class="flex items-center justify-between mb-4">
+                                <span
+                                    class="mono-data text-[9px] text-on-surface-variant border border-outline-variant/40 px-2">INC-104</span>
+                                <span class="text-[9px] text-on-surface-variant/60 font-black tracking-[0.2em]">72%
+                                    MATCH</span>
+                            </div>
+                            <h4
+                                class="text-xl font-headline font-black uppercase italic tracking-tight text-on-surface group-hover:text-primary transition-colors">
+                                Invalid Cache Format</h4>
+                            <div class="mt-4 flex items-center justify-between">
+                                <span
+                                    class="text-[9px] bg-outline-variant/40 text-on-surface-variant border border-outline-variant/20 px-2 py-0.5 font-bold uppercase">PATCHED</span>
+                                <span
+                                    class="text-[9px] text-on-surface-variant/40 font-bold uppercase tracking-widest">JAN
+                                    2024</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <aside class="brutalist-tile flex flex-col overflow-hidden bg-surface/30">
+            <div class="p-4 border-b border-patina/20 flex items-center gap-3 bg-background/50">
+                <div class="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center border border-primary/30">
+                    <span class="material-symbols-outlined text-primary text-lg">smart_toy</span>
+                </div>
+                <div>
+                    <h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-primary leading-none mb-1">
+                        Intelligence Briefing</h2>
+                    <span class="text-[8px] text-on-surface-variant/60 font-bold uppercase tracking-widest">V2.1 // RCA
+                        ENGINE</span>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                <div class="space-y-4">
+                    <p class="text-sm font-medium text-on-surface leading-snug">
+                        Analyzed <span
+                            class="text-primary mono-data underline decoration-primary/30 underline-offset-2">redis_worker_04</span>
+                        logs. Correlated with US-East spikes.
+                    </p>
+                    <div class="p-4 bg-background border-l-2 border-patina shadow-inner">
+                        <p class="text-xs font-bold text-patina uppercase mb-1">Detection</p>
+                        <p class="text-xs text-on-surface/90 italic">Write-Amplification Loop detected in session store.
+                        </p>
+                    </div>
+                    <div class="bg-primary/5 p-4 border border-primary/10">
+                        <p
+                            class="text-[10px] text-primary font-black uppercase tracking-widest mb-3 border-b border-primary/10 pb-1">
+                            Proposed Sequence</p>
+                        <div class="space-y-2 text-[11px] mono-data text-on-surface-variant">
+                            <div class="flex gap-2"><span class="text-primary opacity-60">01.</span> Flush <span
+                                    class="text-on-surface">[0x4F...]</span></div>
+                            <div class="flex gap-2"><span class="text-primary opacity-60">02.</span> RAM → <span
+                                    class="text-on-surface">32GB</span></div>
+                            <div class="flex gap-2"><span class="text-primary opacity-60">03.</span> Rollback <span
+                                    class="text-on-surface">edge-sh</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-patina/5 border border-patina/20 p-4">
+                    <div class="flex items-center gap-2 text-patina mb-3">
+                        <span class="material-symbols-outlined text-sm">neurology</span>
+                        <h5 class="text-[9px] font-black uppercase tracking-widest">FAISS Retrieval</h5>
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                        Vector memory suggests scaling cluster memory 2x. Historical INC-288 confirmed.
+                    </p>
+                </div>
+            </div>
+            <div class="p-4 border-t border-patina/20 bg-background">
+                <div class="flex flex-col gap-3">
+                    <button
+                        class="w-full py-2 bg-primary/10 border border-primary/30 text-[9px] font-black text-primary uppercase tracking-[0.2em] hover:bg-primary hover:text-background transition-all">Draft
+                        Recovery Script</button>
+                    <div class="relative mt-2">
+                        <input
+                            class="w-full bg-surface-accent/50 border-0 border-b border-patina focus:border-primary focus:ring-0 px-2 py-3 text-xs placeholder:text-on-surface-variant/20 mono-data"
+                            placeholder="ISSUE DIRECTIVE..." type="text" />
+                        <button class="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-primary">
+                            <span class="material-symbols-outlined text-lg">arrow_right_alt</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <footer
+            class="col-span-3 brutalist-tile h-10 flex items-center justify-between px-6 text-[8px] uppercase tracking-[0.4em] text-on-surface-variant font-bold bg-surface">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>System Status: Optimal</span>
+                </div>
+                <span class="text-outline-variant">|</span>
+                <span>Latency: 12ms</span>
+                <span class="text-outline-variant">|</span>
+                <span>Nodes: 428/428</span>
+            </div>
+            <div class="flex items-center gap-10">
+                <span>© 2024 RootSight Tactical Interface</span>
+                <div class="flex gap-4 border-l border-outline-variant/30 pl-4">
+                    <button class="hover:text-primary">Docs</button>
+                    <button class="hover:text-primary">API</button>
+                    <button class="hover:text-primary">Archive</button>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <div
+        class="fixed inset-0 pointer-events-none z-[-1] opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
+    </div>
+
+</body>
+
+</html>
