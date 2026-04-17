@@ -6,6 +6,11 @@ Provides agent-scoped loggers with consistent formatting using Rich.
 
 import logging
 import sys
+
+# Fix Unicode printing issues on Windows terminals
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 from rich.logging import RichHandler
 from src.config import settings
 

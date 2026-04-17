@@ -16,7 +16,7 @@ from src.utils.logger import get_logger
 
 logger = get_logger("integrations.embedding")
 
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = "gemini-embedding-001"
 
 
 class EmbeddingClient:

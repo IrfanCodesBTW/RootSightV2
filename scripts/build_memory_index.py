@@ -12,12 +12,16 @@ import sys
 import json
 from pathlib import Path
 
+# Fix Unicode printing issues on Windows terminals
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import SEED_DIR, settings
 from src.services.vector_store import vector_store
-from src.integrations.embedding_client import embedding_client
+from src.integrations.embedding_client import embedding_client, EMBEDDING_MODEL
 from src.utils.logger import get_logger
 
 logger = get_logger("scripts.build_memory_index")
@@ -59,7 +63,7 @@ def main():
         print(f"   ✓ {data['incident_id']}: {data['title']}")
 
     # Generate embeddings
-    print(f"\n🧠  Generating embeddings via text-embedding-004...")
+    print(f"\n🧠  Generating embeddings via {EMBEDDING_MODEL}...")
     texts = []
     for inc in incidents:
         text = (
