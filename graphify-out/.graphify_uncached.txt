@@ -1,0 +1,9 @@
+graphify-out\GRAPH_REPORT.md
+rootsight-frontend\AGENTS.md
+rootsight-frontend\CLAUDE.md
+rootsight-frontend\README.md
+rootsight-frontend\public\file.svg
+rootsight-frontend\public\globe.svg
+rootsight-frontend\public\next.svg
+rootsight-frontend\public\vercel.svg
+rootsight-frontend\public\window.svg

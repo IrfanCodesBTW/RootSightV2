@@ -1,0 +1,26 @@
+{
+  "alert": {
+    "title": "CDN Origin 502 Errors after Cache Purge",
+    "service": "content-delivery",
+    "severity": "P1",
+    "environment": "production",
+    "region": "global",
+    "source": "pagerduty",
+    "started_at": "2024-05-10T14:00:00Z"
+  },
+  "logs": [
+    { "timestamp": "2024-05-10T13:58:00Z", "level": "INFO", "message": "Deploying cache-purge-service v2.1.0", "service": "cache-purger", "host": "deploy-agent-1" },
+    { "timestamp": "2024-05-10T13:59:00Z", "level": "INFO", "message": "Global cache purge initiated by user 901", "service": "content-delivery", "host": "edge-control" },
+    { "timestamp": "2024-05-10T14:00:05Z", "level": "WARN", "message": "CPU utilization exceeded 80%", "service": "content-delivery", "host": "edge-node-12" },
+    { "timestamp": "2024-05-10T14:00:10Z", "level": "WARN", "message": "CPU utilization exceeded 80%", "service": "content-delivery", "host": "edge-node-45" },
+    { "timestamp": "2024-05-10T14:00:15Z", "level": "ERROR", "message": "Origin timeout waiting for connection", "service": "content-delivery", "host": "edge-node-12" },
+    { "timestamp": "2024-05-10T14:00:20Z", "level": "ERROR", "message": "502 Bad Gateway returned to client", "service": "content-delivery", "host": "edge-node-45" },
+    { "timestamp": "2024-05-10T14:01:00Z", "level": "ERROR", "message": "502 Bad Gateway returned to client", "service": "content-delivery", "host": "edge-node-12" },
+    { "timestamp": "2024-05-10T14:02:00Z", "level": "CRITICAL", "message": "Edge node failure rate > 10%", "service": "content-delivery", "host": "edge-control" }
+  ],
+  "expected": {
+    "timeline_events": 6,
+    "top_hypothesis": "Global cache purge caused a thundering herd that overwhelmed origin servers, leading to 502 Bad Gateway errors at the edge.",
+    "confidence_range": "80-95%"
+  }
+}

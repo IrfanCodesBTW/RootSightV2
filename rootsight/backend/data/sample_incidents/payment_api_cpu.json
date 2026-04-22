@@ -1,0 +1,26 @@
+{
+  "alert": {
+    "title": "High CPU Spike in Payment Service",
+    "service": "payment-api",
+    "severity": "P1",
+    "environment": "production",
+    "region": "eu-central-1",
+    "source": "datadog",
+    "started_at": "2024-05-11T09:15:00Z"
+  },
+  "logs": [
+    { "timestamp": "2024-05-11T09:12:00Z", "level": "INFO", "message": "Promotional campaign 'FLASH50' started", "service": "marketing-service", "host": "mkt-node-1" },
+    { "timestamp": "2024-05-11T09:15:05Z", "level": "WARN", "message": "Inbound request rate increased by 400%", "service": "api-gateway", "host": "gw-node-1" },
+    { "timestamp": "2024-05-11T09:16:00Z", "level": "CRITICAL", "message": "CPU usage at 98%", "service": "payment-api", "host": "pay-node-1" },
+    { "timestamp": "2024-05-11T09:16:05Z", "level": "CRITICAL", "message": "CPU usage at 95%", "service": "payment-api", "host": "pay-node-2" },
+    { "timestamp": "2024-05-11T09:17:00Z", "level": "ERROR", "message": "Database query timeout for transaction lookup", "service": "payment-api", "host": "pay-node-1" },
+    { "timestamp": "2024-05-11T09:18:00Z", "level": "ERROR", "message": "Request timeout processing payment ID 88921", "service": "payment-api", "host": "pay-node-2" },
+    { "timestamp": "2024-05-11T09:20:00Z", "level": "INFO", "message": "Auto-scaling group added 3 instances", "service": "aws-asg", "host": "aws-control" },
+    { "timestamp": "2024-05-11T09:25:00Z", "level": "INFO", "message": "CPU usage stabilized at 65%", "service": "payment-api", "host": "pay-node-1" }
+  ],
+  "expected": {
+    "timeline_events": 7,
+    "top_hypothesis": "A traffic spike from a promotional campaign caused CPU saturation on payment-api nodes, leading to DB query and request timeouts until auto-scaling recovered the system.",
+    "confidence_range": "75-90%"
+  }
+}

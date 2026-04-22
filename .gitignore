@@ -1,0 +1,11 @@
+.env
+.venv/
+.uv_cache/
+__pycache__/
+*.pyc
+node_modules/
+.next/
+*.db
+storage/
+*.faiss
+*.faiss.meta
