@@ -17,9 +17,8 @@ export function Nav() {
     const fetchData = async () => {
       // Health check
       try {
-        const res = await api.healthCheck();
-        // Backend returns status "healthy"
-        setHealth(res.status === "healthy" || res.status === "ok" ? "healthy" : "error");
+        const res = await api.checkBackendHealth();
+        setHealth(res.healthy ? "healthy" : "error");
       } catch (err: unknown) {
         setHealth("error");
       }
@@ -28,7 +27,7 @@ export function Nav() {
       try {
         const res = await api.listIncidents();
         const active = res.items.filter((i) => 
-          i.status !== IncidentStatus.COMPLETED && i.status !== IncidentStatus.RESOLVED
+          i.status !== IncidentStatus.COMPLETED
         ).length;
         setActiveCount(active);
       } catch (err: unknown) {

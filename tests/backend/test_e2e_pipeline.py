@@ -3,6 +3,7 @@ import asyncio
 import json
 from unittest.mock import patch
 from src.features.orchestrator.pipeline_orchestrator import start_pipeline, get_pipeline_state
+from src.schemas.incident import IncidentStatus
 
 
 @pytest.mark.asyncio
@@ -81,9 +82,12 @@ async def test_end_to_end_pipeline(
 
     state = get_pipeline_state(incident_id)
     assert state is not None
-    if state["status"] not in ("completed", "partial"):
-        print(f"DEBUG: Pipeline failed with state: {json.dumps(state, indent=2)}")
-    # Status should be completed (or partial if some steps failed)
-    assert state["status"] in ("completed", "partial")
+    status = state["status"]
+
+    # Status uses IncidentStatus enum values (lowercase strings)
+    if status not in (IncidentStatus.COMPLETED, IncidentStatus.PARTIAL, IncidentStatus.DEGRADED):
+        print(f"DEBUG: Pipeline failed with state: {json.dumps(state, indent=2, default=str)}")
+
+    assert status in (IncidentStatus.COMPLETED, IncidentStatus.PARTIAL, IncidentStatus.DEGRADED)
     assert state["timeline"] is not None
     assert state["rca"] is not None

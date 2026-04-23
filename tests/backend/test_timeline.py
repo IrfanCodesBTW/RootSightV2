@@ -46,7 +46,9 @@ def sample_raw_events():
 @pytest.mark.asyncio
 async def test_build_timeline_empty(sample_incident):
     result = await build_timeline([], sample_incident)
-    assert len(result.events) == 0
+    # Now returns a synthetic event as fallback
+    assert len(result.events) == 1
+    assert result.events[0].event_type == EventType.UNKNOWN
     assert result.timeline_confidence == 0
     assert "No logs ingested" in result.analysis_note
 
@@ -82,6 +84,7 @@ async def test_build_timeline_failure_returns_fallback(mock_generate, sample_inc
     mock_generate.side_effect = RuntimeError("gemini offline")
 
     result = await build_timeline(sample_raw_events, sample_incident)
-    assert len(result.events) == 0
+    # Fallback now includes a synthetic event
+    assert len(result.events) == 1
     assert result.timeline_confidence == 0
     assert "LLM failure" in result.analysis_note

@@ -1,34 +1,19 @@
 import asyncio
 import json
 import logging
-import re
 from typing import Optional
 
 from groq import Groq
 
+from .errors import strip_fences, enforce_token_budget
 from ...utils.config import settings
 
 logger = logging.getLogger(__name__)
 
 client = Groq(api_key=settings.GROQ_API_KEY)
 
-
-def strip_fences(text: str) -> str:
-    """Remove markdown code fences from LLM output without corrupting inner content."""
-    text = text.strip()
-    pattern = r"^```(?:json|JSON)?\s*\n?(.*?)```\s*$"
-    match = re.match(pattern, text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return text
-
-
-def enforce_token_budget(text: str, max_tokens: int = 3000) -> str:
-    max_chars = max_tokens * 4
-    if len(text) > max_chars:
-        logger.warning(f"[TOKEN] Truncated: {len(text)} → {max_chars} chars")
-        return text[:max_chars]
-    return text
+# Re-export shared utilities for backward compatibility
+__all__ = ["format_json", "strip_fences", "enforce_token_budget"]
 
 
 async def format_json(prompt: str, max_retries: int = 3) -> Optional[dict]:
@@ -61,7 +46,19 @@ async def format_json(prompt: str, max_retries: int = 3) -> Optional[dict]:
                 return None
             await asyncio.sleep(2**attempt)
         except Exception as e:
-            logger.warning("groq_client.request_failed attempt=%s/%s error=%s", attempt + 1, max_retries, e)
+            # Detect rate-limit or server errors for backoff logging
+            err_str = str(e).lower()
+            is_retryable = any(code in err_str for code in ("429", "503", "rate", "quota", "resource_exhausted"))
+            if is_retryable:
+                logger.warning(
+                    "groq_client.rate_limited attempt=%s/%s error=%s backoff=%ss",
+                    attempt + 1,
+                    max_retries,
+                    e,
+                    2**attempt,
+                )
+            else:
+                logger.warning("groq_client.request_failed attempt=%s/%s error=%s", attempt + 1, max_retries, e)
             if attempt == max_retries - 1:
                 logger.error("groq_client.exhausted_retries returning None")
                 return None

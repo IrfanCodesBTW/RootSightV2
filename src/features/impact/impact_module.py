@@ -5,7 +5,8 @@ from ...schemas.event import EventList
 from ...schemas.hypothesis import HypothesisList
 from ...schemas.impact import Impact, SeverityBand
 from pydantic import ValidationError
-from ..llm_clients.gemini_client import generate, enforce_token_budget
+from ..llm_clients.gemini_client import generate
+from ..llm_clients.errors import LLMClientError, enforce_token_budget
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_list: HypothesisList) -> Impact:
     """
     Calls Gemini to estimate the business and user impact of the incident.
+    Always returns an Impact (never None) — uses _fallback_impact on any failure.
     """
     logger.info(
         "analyze_impact.start incident_id=%s events=%s hypotheses=%s",
@@ -34,6 +36,7 @@ async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_l
         Return ONLY valid JSON:
         {{
           "affected_services": ["list"],
+          "affected_users": 0,
           "severity_band": "critical|high|medium|low",
           "estimated_duration_minutes": number or null,
           "probable_user_impact": "plain English description",
@@ -64,15 +67,19 @@ async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_l
             )
             return result
         except ValidationError as e:
-            logger.error(f"[IMPACT] LLM output invalid: {e}")
+            logger.error("analyze_impact.validation_failed incident_id=%s error=%s", incident.incident_id, e)
             return _fallback_impact(incident)
 
+    except LLMClientError:
+        logger.exception("analyze_impact.llm_client_error incident_id=%s", incident.incident_id)
+        return _fallback_impact(incident)
     except Exception:
         logger.exception("analyze_impact.failed incident_id=%s", incident.incident_id)
         return _fallback_impact(incident)
 
 
 def _fallback_impact(incident: Incident) -> Impact:
+    """Return a fallback Impact — never let Impact be null in the DB."""
     # Map incident severity to severity band
     band_map = {
         "P0": SeverityBand.CRITICAL,
@@ -84,6 +91,7 @@ def _fallback_impact(incident: Incident) -> Impact:
     fallback = Impact(
         incident_id=incident.incident_id,
         affected_services=[incident.service],
+        affected_users=0,
         severity_band=band_map.get(incident.severity.value, SeverityBand.MEDIUM),
         estimated_duration_minutes=None,
         probable_user_impact="Impact assessment failed. Treating as undetermined.",

@@ -9,7 +9,7 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
     return (
       <section className="rounded-xl border border-border p-4">
         <p className="text-sm font-medium">Timeline</p>
-        <p className="mt-2 text-sm text-muted-foreground">No timeline data yet.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Timeline reconstruction pending.</p>
       </section>
     );
   }
@@ -19,14 +19,14 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
       <p className="text-sm font-medium">Timeline</p>
       <ol className="space-y-3">
         {events.map((event) => (
-          <li key={event.id} className="grid grid-cols-[96px_1fr] gap-3 text-sm">
+          <li key={event.event_id} className="grid grid-cols-[96px_1fr] gap-3 text-sm">
             <div className="text-xs text-muted-foreground">
               {new Date(event.timestamp).toLocaleTimeString()}
             </div>
             <div className="space-y-1">
               <p>{event.description}</p>
               <p className="text-xs text-muted-foreground">
-                {event.event_type}{event.source ? ` from ${event.source}` : ""}
+                {event.event_type}{event.evidence_source ? ` from ${event.evidence_source}` : ""}
               </p>
             </div>
           </li>

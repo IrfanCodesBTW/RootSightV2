@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 from enum import Enum
@@ -29,6 +29,23 @@ class Event(BaseModel):
     evidence_source: str = Field(min_length=1)
     confidence: int = Field(ge=0, le=100)
     raw_reference: Optional[str] = None
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def clamp_confidence(cls, v):
+        """Handle float-to-int conversion and clamping for confidence scores.
+
+        - If a float in [0.0, 1.0] is received, scale to [0, 100]
+        - If out of [0, 100] range, clamp to bounds
+        """
+        if isinstance(v, float):
+            if 0.0 <= v <= 1.0:
+                v = int(round(v * 100))
+            else:
+                v = int(round(v))
+        if isinstance(v, (int, float)):
+            return max(0, min(100, int(v)))
+        return v
 
 
 class EventList(BaseModel):

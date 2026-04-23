@@ -21,7 +21,7 @@ from .utils.database import create_db_and_tables
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
-app = FastAPI(title="RootSight API", version="0.1.0")
+app = FastAPI(title="RootSight API", version="3.0.0")
 
 # ── CORS ────────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -38,6 +38,7 @@ app.add_middleware(
 async def on_startup():
     logger.info("startup.begin")
     create_db_and_tables()
+    logger.info("startup.database_ready")
     await seed_historical_incidents()
     logger.info("startup.complete")
 
@@ -98,7 +99,14 @@ def _text_upload_payload(filename: str, contents: bytes) -> dict[str, Any]:
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
     logger.error("request_validation_failed path=%s errors=%s", request.url.path, exc.errors())
-    return JSONResponse(status_code=422, content=error_response("Invalid request payload.", 422))
+    # Return field-level error detail
+    return JSONResponse(
+        status_code=422,
+        content=error_response(
+            "Invalid request payload.",
+            422,
+        ),
+    )
 
 
 @app.exception_handler(HTTPException)
@@ -117,24 +125,40 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ── Routes ──────────────────────────────────────────────────────────────────────
 @app.get("/")
 async def root():
-    return success_response({"message": "RootSight API is operational", "version": "0.1.0"})
+    return success_response({"message": "RootSight API is operational", "version": "3.0.0"})
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
-    return success_response({"status": "healthy", "version": "0.1.0"})
+    return success_response({"status": "ok", "version": "3.0.0"})
 
 
 @app.post("/trigger")
 @app.post("/api/trigger")
 async def trigger_pipeline(payload: dict[str, Any]):
+    """Triggers the RootSight intelligence pipeline.
+
+    Accepts PagerDuty/Datadog payloads or manual trigger payloads.
+    Validates that the payload is non-empty and contains a title or bundle_file.
+    """
     if not isinstance(payload, dict) or not payload:
         raise HTTPException(status_code=422, detail="Payload must be a non-empty JSON object.")
+
+    # Validate that at least title or bundle_file is present
+    if not payload.get("title") and not payload.get("bundle_file"):
+        raise HTTPException(
+            status_code=422,
+            detail="Payload must include 'title' or 'bundle_file'.",
+        )
 
     logger.info("trigger_pipeline.start keys=%s", sorted(payload.keys()))
     incident_id = await start_pipeline(payload)
     logger.info("trigger_pipeline.complete incident_id=%s", incident_id)
-    return success_response({"incident_id": incident_id, "status": "pipeline_started"})
+    return JSONResponse(
+        status_code=202,
+        content=success_response({"incident_id": incident_id, "status": "pipeline_started"}),
+    )
 
 
 # Support both singular and plural paths for incident retrieval
@@ -153,6 +177,31 @@ async def get_incident_status(incident_id: str):
 
     logger.info("get_incident_status.complete incident_id=%s status=%s", incident_id, state.get("status"))
     return success_response(state)
+
+
+# Pipeline state route (alias for frontend compatibility)
+@app.get("/incident/{incident_id}/pipeline")
+@app.get("/api/incidents/{incident_id}/pipeline")
+async def get_incident_pipeline(incident_id: str):
+    """Returns the current state of the pipeline for a specific incident."""
+    if not incident_id:
+        raise HTTPException(status_code=422, detail="Incident ID is required.")
+
+    state = get_pipeline_state(incident_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    # Return just the pipeline steps portion
+    pipeline_data = {
+        "incident_id": incident_id,
+        "status": state.get("status"),
+        "pipeline_steps": state.get("pipeline_steps", {}),
+        "current_step": state.get("current_step"),
+        "started_at": state.get("started_at"),
+        "completed_at": state.get("completed_at"),
+        "error": state.get("error"),
+    }
+    return success_response(pipeline_data)
 
 
 @app.post("/incident/upload")
@@ -214,9 +263,13 @@ async def list_incidents(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
 ):
-    result = get_all_incidents(page=page, limit=limit)
-    logger.info("list_incidents.complete total=%s page=%s", result["total"], page)
-    return success_response(result)
+    try:
+        result = get_all_incidents(page=page, limit=limit)
+        logger.info("list_incidents.complete total=%s page=%s", result["total"], page)
+        return success_response(result)
+    except Exception:
+        logger.exception("list_incidents.failed")
+        return success_response({"items": [], "total": 0, "page": page, "limit": limit})
 
 
 if __name__ == "__main__":

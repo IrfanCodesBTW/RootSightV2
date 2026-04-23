@@ -1,5 +1,9 @@
+import logging
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -31,6 +35,22 @@ class Settings(BaseSettings):
     API_ERROR_DETAIL_IN_RESPONSE: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def validate_api_keys(self):
+        """Raise ValueError if API keys are missing when not in demo mode."""
+        if not self.DEMO_MODE:
+            missing = []
+            if not self.GEMINI_API_KEY or not self.GEMINI_API_KEY.strip():
+                missing.append("GEMINI_API_KEY")
+            if not self.GROQ_API_KEY or not self.GROQ_API_KEY.strip():
+                missing.append("GROQ_API_KEY")
+            if missing:
+                raise ValueError(
+                    f"Missing required API keys: {', '.join(missing)}. "
+                    f"Set them in .env or enable DEMO_MODE=true for offline operation."
+                )
+        return self
 
 
 settings = Settings()

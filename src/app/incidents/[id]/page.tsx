@@ -80,7 +80,8 @@ export default function IncidentDetailPage() {
     </div>
   );
 
-  const pipelineState = incident.pipeline_state;
+  const incData = incident.incident;
+  const pipelineState = incident.pipeline_steps;
   const pipelineKeys = pipelineState ? (Object.keys(pipelineState) as Array<keyof PipelineState>) : [];
   const completedSteps = pipelineState ? pipelineKeys.filter(k => pipelineState[k]?.status === PipelineStepStatus.COMPLETE).length : 0;
   const progressPct = pipelineKeys.length > 0 ? Math.round((completedSteps / pipelineKeys.length) * 100) : 0;
@@ -97,21 +98,21 @@ export default function IncidentDetailPage() {
         <div className="flex flex-col lg:flex-row lg:items-start gap-6">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
-              <span className={cn("text-xs font-bold px-2.5 py-1 rounded-md border font-mono", SEV_COLORS[incident.severity])}>
-                {incident.severity}
+              <span className={cn("text-xs font-bold px-2.5 py-1 rounded-md border font-mono", SEV_COLORS[incData?.severity ?? "P2"])}>
+                {incData?.severity ?? "P2"}
               </span>
-              <StatusBadge status={incident.status} />
+              <StatusBadge status={incident.status as IncidentStatus} />
               <span className="text-xs font-mono text-gray-500 bg-white/[0.04] px-2 py-1 rounded">
-                {incident.source.toUpperCase()}
+                {(incData?.source ?? "unknown").toUpperCase()}
               </span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight mb-2">{incident.title}</h1>
-            <p className="text-gray-400 text-sm">{incident.description}</p>
+            <h1 className="text-2xl font-bold tracking-tight mb-2">{incData?.title ?? "Untitled Incident"}</h1>
+            <p className="text-gray-400 text-sm">{incData?.description ?? ""}</p>
           </div>
           <div className="flex gap-8 lg:border-l lg:border-white/[0.07] lg:pl-6">
             {[
-              { label: "Duration", val: getIncidentDuration(incident) },
-              { label: "Created", val: formatRelativeTime(incident.created_at) },
+              { label: "Duration", val: incident.started_at && incident.completed_at ? getIncidentDuration({ started_at: incident.started_at, completed_at: incident.completed_at } as any) : "Ongoing" },
+              { label: "Created", val: formatRelativeTime(incident.started_at || new Date().toISOString()) },
               { label: "Pipeline", val: `${progressPct}%` },
             ].map(({ label, val }) => (
               <div key={label}>
@@ -180,16 +181,16 @@ export default function IncidentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Timeline */}
-        {incident.timeline && incident.timeline.length > 0 && (
-          <Panel title="Timeline Reconstruction" accent="blue" badge={`${incident.timeline.length} events`}>
+        {incident.timeline && incident.timeline.events && incident.timeline.events.length > 0 && (
+          <Panel title="Timeline Reconstruction" accent="blue" badge={`${incident.timeline.events.length} events`}>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {[...incident.timeline].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map((ev) => (
-                <div key={ev.id} className="grid grid-cols-[72px_1fr] gap-3 group">
+              {[...incident.timeline.events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map((ev) => (
+                <div key={ev.event_id} className="grid grid-cols-[72px_1fr] gap-3 group">
                   <div className="text-[10px] font-mono text-gray-500 pt-2 text-right leading-tight">{formatAbsoluteTime(ev.timestamp)}</div>
                   <div className="bg-white/[0.03] border border-white/[0.06] border-l-2 border-l-blue-500/60 rounded-lg p-3">
                     <p className="text-sm text-gray-200 mb-2">{ev.description}</p>
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {ev.evidence.map((e, i) => <span key={i} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-gray-500">{e}</span>)}
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-gray-500">{ev.evidence_source}</span>
                     </div>
                     <ConfidenceBar confidence={ev.confidence} />
                   </div>
@@ -200,11 +201,11 @@ export default function IncidentDetailPage() {
         )}
 
         {/* RCA Hypotheses */}
-        {incident.hypotheses && incident.hypotheses.length > 0 && (
-          <Panel title="RCA Hypotheses" accent="purple" badge={`${incident.hypotheses.length} hypotheses`}>
+        {incident.rca && incident.rca.hypotheses && incident.rca.hypotheses.length > 0 && (
+          <Panel title="RCA Hypotheses" accent="purple" badge={`${incident.rca.hypotheses.length} hypotheses`}>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {[...incident.hypotheses].sort((a, b) => a.rank - b.rank).map((h) => (
-                <div key={h.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-colors">
+              {[...incident.rca.hypotheses].sort((a, b) => a.rank - b.rank).map((h) => (
+                <div key={h.hypothesis_id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-colors">
                   <div className="flex items-start gap-3 mb-2">
                     <span className={cn("w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold font-mono flex-shrink-0 mt-0.5",
                       h.rank === 1 ? "bg-amber-500/20 text-amber-400" : "bg-white/[0.06] text-gray-500")}>
@@ -212,13 +213,13 @@ export default function IncidentDetailPage() {
                     </span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="font-semibold text-sm">{h.title}</span>
+                        <span className="font-semibold text-sm">{h.statement}</span>
                         <span className={cn("font-mono text-[11px] font-bold px-2 py-0.5 rounded-md flex-shrink-0",
-                          h.confidence >= 0.75 ? "bg-emerald-500/15 text-emerald-400" :
-                          h.confidence >= 0.5 ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"
-                        )}>{Math.round(h.confidence * 100)}%</span>
+                          h.confidence_score >= 75 ? "bg-emerald-500/15 text-emerald-400" :
+                          h.confidence_score >= 50 ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"
+                        )}>{h.confidence_score}%</span>
                       </div>
-                      <p className="text-xs text-gray-400 leading-relaxed">{h.description}</p>
+                      <p className="text-xs text-gray-400 leading-relaxed">{h.recommended_check ?? ""}</p>
                     </div>
                   </div>
                   <div className="mt-3 space-y-2">
@@ -230,10 +231,10 @@ export default function IncidentDetailPage() {
                         ))}
                       </div>
                     )}
-                    {h.counter_evidence && h.counter_evidence.length > 0 && (
+                    {h.contradicting_evidence && h.contradicting_evidence.length > 0 && (
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-red-500 font-semibold mb-1">Counter</div>
-                        {h.counter_evidence.map((e, i) => (
+                        {h.contradicting_evidence.map((e, i) => (
                           <div key={i} className="text-[11px] text-gray-400 pl-3 border-l-2 border-red-500/40 mb-1">{e}</div>
                         ))}
                       </div>
@@ -255,24 +256,24 @@ export default function IncidentDetailPage() {
                 <div className="text-xl font-bold uppercase">{incident.impact.severity_band}</div>
               </div>
             </div>
-            {(incident.impact.estimated_users_affected || incident.impact.estimated_revenue_loss) && (
+            {(incident.impact.affected_users > 0 || incident.impact.estimated_requests_affected) && (
               <div className="grid grid-cols-2 gap-3 mb-4">
-                {incident.impact.estimated_users_affected && (
+                {incident.impact.affected_users > 0 && (
                   <div className="bg-amber-500/[0.07] border border-amber-500/20 rounded-xl p-3">
                     <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Users Affected</div>
-                    <div className="font-mono text-xl font-bold text-amber-400">{incident.impact.estimated_users_affected.toLocaleString()}</div>
+                    <div className="font-mono text-xl font-bold text-amber-400">{incident.impact.affected_users.toLocaleString()}</div>
                   </div>
                 )}
-                {incident.impact.estimated_revenue_loss && (
+                {incident.impact.estimated_requests_affected && (
                   <div className="bg-red-500/[0.07] border border-red-500/20 rounded-xl p-3">
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Revenue Loss</div>
-                    <div className="font-mono text-xl font-bold text-red-400">{incident.impact.estimated_revenue_loss}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Requests Affected</div>
+                    <div className="font-mono text-xl font-bold text-red-400">{incident.impact.estimated_requests_affected}</div>
                   </div>
                 )}
               </div>
             )}
-            <ImpactRow label="Business Impact" text={incident.impact.business_impact} />
-            <ImpactRow label="User Impact" text={incident.impact.user_impact} />
+            <ImpactRow label="Business Impact" text={incident.impact.business_impact_summary ?? "Not yet assessed"} />
+            <ImpactRow label="User Impact" text={incident.impact.probable_user_impact ?? "Unknown"} />
             <div>
               <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2">Affected Services</div>
               <div className="flex flex-wrap gap-1.5">
@@ -285,21 +286,21 @@ export default function IncidentDetailPage() {
         )}
 
         {/* Similar Incidents */}
-        {incident.similar_incidents && incident.similar_incidents.length > 0 && (
+        {incident.memory && incident.memory.matches && incident.memory.matches.length > 0 && (
           <Panel title="Similar Incidents" accent="cyan" badge="via FAISS">
             <div className="space-y-3">
-              {incident.similar_incidents.map(s => (
-                <div key={s.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-colors">
+              {incident.memory.matches.map(s => (
+                <div key={`${s.incident_id}-${s.similar_to_id}`} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-colors">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="font-semibold text-sm">{s.title}</div>
+                    <div className="font-semibold text-sm">{s.similar_to_id}</div>
                     <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-400 flex-shrink-0">
                       {Math.round(s.similarity_score * 100)}% match
                     </span>
                   </div>
-                  <p className="text-[12px] text-gray-400 italic border-l-2 border-cyan-500/40 pl-3 mb-3">{s.similarity_explanation}</p>
+                  <p className="text-[12px] text-gray-400 italic border-l-2 border-cyan-500/40 pl-3 mb-3">{s.why_similar}</p>
                   <div className="flex items-start gap-2 text-emerald-400 text-[12px]">
                     <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                    <span>{s.resolution_summary}</span>
+                    <span>{s.previous_fix}</span>
                   </div>
                 </div>
               ))}
@@ -308,12 +309,12 @@ export default function IncidentDetailPage() {
         )}
 
         {/* Actions — full width */}
-        {incident.actions && incident.actions.length > 0 && (
+        {incident.actions && incident.actions.actions && incident.actions.actions.length > 0 && (
           <div className="lg:col-span-2">
             <Panel title="Generated Actions" accent="amber">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {incident.actions.map(action => (
-                  <ActionCard key={action.id} action={action} />
+                {incident.actions.actions.map(action => (
+                  <ActionCard key={action.action_id} action={action} />
                 ))}
               </div>
             </Panel>
@@ -321,8 +322,8 @@ export default function IncidentDetailPage() {
         )}
 
         {/* Empty state if pipeline still running */}
-        {(!incident.timeline || incident.timeline.length === 0) &&
-         (!incident.hypotheses || incident.hypotheses.length === 0) && (
+        {(!incident.timeline || !incident.timeline.events || incident.timeline.events.length === 0) &&
+         (!incident.rca || !incident.rca.hypotheses || incident.rca.hypotheses.length === 0) && (
           <div className="lg:col-span-2 rounded-2xl bg-[#0f0f18] border border-white/[0.07] p-16 text-center">
             <Loader2 className="w-10 h-10 animate-spin text-blue-400 mx-auto mb-4" />
             <div className="text-lg font-semibold mb-2">Pipeline Running</div>
@@ -367,10 +368,10 @@ function ImpactRow({ label, text }: { label: string; text: string }) {
 function ActionCard({ action }: { action: any }) {
   const [approval, setApproval] = useState(action.approval_status);
   const [copied, setCopied] = useState(false);
-  const typeIcons: Record<string, string> = { slack_message: "💬", jira_ticket: "📋", email: "📧" };
+  const typeIcons: Record<string, string> = { slack_responder: "💬", jira_ticket: "📋", manual_review: "📝" };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(action.content).catch(() => {});
+    navigator.clipboard.writeText(action.payload_preview || JSON.stringify(action.full_payload)).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -380,16 +381,16 @@ function ActionCard({ action }: { action: any }) {
       <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
           <span>{typeIcons[action.action_type] || "📄"}</span>
-          <span className="font-semibold text-sm">{action.title}</span>
+          <span className="font-semibold text-sm capitalize">{action.action_type?.replace(/_/g, " ")}</span>
         </div>
         <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full",
-          approval === "pending" && "bg-amber-500/15 text-amber-400",
+          approval?.includes("pending") && "bg-amber-500/15 text-amber-400",
           approval === "approved" && "bg-emerald-500/15 text-emerald-400",
           approval === "rejected" && "bg-red-500/15 text-red-400",
         )}>{approval}</span>
       </div>
       <pre className="px-4 py-3 text-[11px] font-mono text-gray-400 leading-relaxed overflow-y-auto max-h-44 whitespace-pre-wrap">
-        {action.content}
+        {action.payload_preview}
       </pre>
       <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-white/[0.06]">
         <button onClick={handleCopy} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-white/[0.07] text-gray-400 hover:text-gray-200 hover:bg-white/[0.05] transition-all">

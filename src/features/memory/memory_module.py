@@ -4,7 +4,7 @@ from ...schemas.hypothesis import HypothesisList
 from ...schemas.similar_incident import SimilarIncident, SimilarIncidentList
 from .vector_store import vector_store
 from ..llm_clients.gemini_client import generate
-from ..llm_clients.errors import LLMClientError
+from ..llm_clients.errors import LLMClientError, enforce_token_budget
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +55,14 @@ async def seed_historical_incidents():
                 incident_id=item["incident_id"], text=embed_text, previous_fix=item["fix_applied"]
             )
         except Exception as e:
-            logger.error(f"[MEMORY] Seed failed for {item['incident_id']}: {e}")
-    logger.info(f"[MEMORY] Seeded {len(SEED_INCIDENTS)} historical incidents")
+            logger.error("[MEMORY] Seed failed for %s: %s", item["incident_id"], e)
+    logger.info("[MEMORY] Seeded %d historical incidents", len(SEED_INCIDENTS))
 
 
 async def find_similar_incidents(incident: Incident, hypothesis_list: HypothesisList) -> SimilarIncidentList:
     """
     Finds similar historical incidents using FAISS and asks Gemini to explain the similarity.
+    Returns empty list on any failure (never raises FileNotFoundError).
     """
     logger.info(
         "find_similar_incidents.start incident_id=%s hypotheses=%s",
@@ -71,6 +72,10 @@ async def find_similar_incidents(incident: Incident, hypothesis_list: Hypothesis
 
     if vector_store.index is None:
         logger.warning("find_similar_incidents.vector_store_none incident_id=%s", incident.incident_id)
+        return SimilarIncidentList(matches=[])
+
+    if vector_store.index.ntotal == 0:
+        logger.warning("find_similar_incidents.empty_index incident_id=%s", incident.incident_id)
         return SimilarIncidentList(matches=[])
 
     try:
@@ -106,8 +111,6 @@ async def find_similar_incidents(incident: Incident, hypothesis_list: Hypothesis
             }}
             """
             try:
-                from ..llm_clients.gemini_client import enforce_token_budget
-
                 prompt = enforce_token_budget(prompt)
                 response = await generate(prompt, max_retries=2)
                 why_similar = (

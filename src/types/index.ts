@@ -1,3 +1,11 @@
+// ============================================================================
+// RootSight V3 — Canonical TypeScript Types
+// Aligned with Python Pydantic schemas (source of truth)
+// ============================================================================
+
+// ── Enums ───────────────────────────────────────────────────────────────────────
+
+/** Matches Python: src/schemas/incident.py → Severity */
 export enum Severity {
   P0 = "P0",
   P1 = "P1",
@@ -6,17 +14,17 @@ export enum Severity {
   P4 = "P4",
 }
 
+/** Matches Python: src/schemas/incident.py → IncidentStatus (lowercase values) */
 export enum IncidentStatus {
-  PENDING = "PENDING",
-  RUNNING = "RUNNING",
-  COMPLETED = "COMPLETED",
-  FAILED = "FAILED",
-  PARTIAL = "PARTIAL",
-  INVESTIGATING = "INVESTIGATING",
-  RESOLVED = "RESOLVED",
-  OPEN = "OPEN",
+  PENDING = "pending",
+  RUNNING = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  PARTIAL = "partial",
+  DEGRADED = "degraded",
 }
 
+/** Pipeline step status — used by the orchestrator */
 export enum PipelineStepStatus {
   PENDING = "PENDING",
   RUNNING = "RUNNING",
@@ -24,12 +32,15 @@ export enum PipelineStepStatus {
   FAILED = "FAILED",
 }
 
+/** Matches Python: src/schemas/impact.py → SeverityBand */
+export type SeverityBand = "critical" | "high" | "medium" | "low";
+
+// ── Pipeline State ──────────────────────────────────────────────────────────────
+
 export interface PipelineStepState {
   status: PipelineStepStatus;
   started_at?: string;
   completed_at?: string;
-  progress_percentage?: number;
-  error?: string;
 }
 
 export interface PipelineState {
@@ -41,94 +52,139 @@ export interface PipelineState {
   actions: PipelineStepState;
 }
 
+export const PIPELINE_STEPS: { key: keyof PipelineState; label: string }[] = [
+  { key: "ingestion", label: "Ingestion" },
+  { key: "timeline", label: "Timeline" },
+  { key: "rca", label: "RCA" },
+  { key: "impact", label: "Impact" },
+  { key: "memory", label: "Memory" },
+  { key: "actions", label: "Actions" },
+];
+
+// ── Domain Models (aligned with Python Pydantic schemas) ────────────────────────
+
+/** Raw log event from ingestion — matches ingestion_service.py → RawEvent */
 export interface RawEvent {
   timestamp: string;
   level: string;
   message: string;
   source: string;
-  metadata?: Record<string, any>;
+  service: string;
 }
 
+/** Structured timeline event — matches schemas/event.py → Event */
 export interface Event {
-  id: string;
+  event_id: string;
+  incident_id: string;
   timestamp: string;
   event_type: string;
   description: string;
+  evidence_source: string;
   confidence: number;
-  evidence: string[];
-  source?: string;
+  raw_reference?: string;
 }
 
+/** Root cause hypothesis — matches schemas/hypothesis.py → Hypothesis */
 export interface Hypothesis {
-  id: string;
+  hypothesis_id: string;
+  incident_id: string;
   rank: number;
-  title: string;
-  description: string;
-  confidence: number;
+  statement: string;
+  confidence_score: number;
   supporting_evidence: string[];
-  counter_evidence: string[];
-  estimated_likelihood: string;
+  contradicting_evidence: string[];
+  missing_information: string[];
+  recommended_check?: string;
+  severity_band?: string | null;
 }
 
+/** Impact assessment — matches schemas/impact.py → Impact */
 export interface Impact {
-  severity_band: "critical" | "high" | "medium" | "low";
-  business_impact: string;
-  user_impact: string;
+  incident_id: string;
   affected_services: string[];
-  estimated_users_affected?: number;
-  estimated_revenue_loss?: string;
-  confidence: number;
+  affected_users: number;
+  severity_band: SeverityBand;
+  estimated_duration_minutes?: number | null;
+  probable_user_impact: string;
+  estimated_requests_affected?: string | null;
+  business_impact_summary?: string | null;
 }
 
+/** Similar past incident — matches schemas/similar_incident.py → SimilarIncident */
 export interface SimilarIncident {
-  id: string;
-  title: string;
+  incident_id: string;
+  similar_to_id: string;
   similarity_score: number;
-  occurred_at: string;
-  resolution_summary: string;
-  similarity_explanation: string;
-  root_cause: string;
+  why_similar: string;
+  previous_fix: string;
 }
 
+/** Remediation action — matches schemas/action.py → Action */
 export interface Action {
-  id: string;
-  action_type: "slack_message" | "jira_ticket" | "email" | "other";
-  title: string;
-  content: string;
-  approval_status: "pending" | "approved" | "rejected";
-  execution_status: "not_sent" | "sent" | "failed";
-  created_at: string;
+  action_id: string;
+  incident_id: string;
+  action_type: string;
+  destination: string;
+  payload_preview: string;
+  full_payload: Record<string, unknown>;
+  approval_status: string;
+  execution_status: string;
 }
+
+// ── Composite Incident (pipeline state response) ────────────────────────────────
 
 export interface Incident {
-  id: string;
-  incident_id?: string; // Support both id and incident_id
-  title: string;
-  description: string;
-  severity: Severity;
-  status: IncidentStatus;
-  created_at: string;
-  updated_at: string;
-  resolved_at?: string;
-  source: string;
-  external_id?: string;
-  pipeline_state?: PipelineState;
-  tags: string[];
-  raw_events?: RawEvent[];
-  timeline?: Event[];
-  hypotheses?: Hypothesis[];
-  impact?: Impact;
-  similar_incidents?: SimilarIncident[];
-  actions?: Action[];
-  recovery_script?: string;
+  incident_id: string;
+  status: IncidentStatus | string;
+  pipeline_steps: PipelineState;
+  current_step?: string;
+  incident: {
+    incident_id: string;
+    title: string;
+    service: string;
+    severity: Severity | string;
+    environment: string;
+    region: string;
+    source: string;
+    description?: string | null;
+    started_at: string;
+    detected_at: string;
+    resolved_at?: string | null;
+    status: IncidentStatus | string;
+  } | null;
+  timeline: {
+    events: Event[];
+    timeline_confidence: number;
+    gaps_detected: number;
+    total_events: number;
+    analysis_note?: string | null;
+  } | null;
+  rca: {
+    hypotheses: Hypothesis[];
+    analysis_confidence: number;
+    is_low_confidence: boolean;
+    analysis_note?: string | null;
+  } | null;
+  impact: Impact | null;
+  memory: {
+    matches: SimilarIncident[];
+  } | null;
+  actions: {
+    actions: Action[];
+  } | null;
+  error?: string | null;
+  started_at?: string;
+  completed_at?: string | null;
 }
 
+// ── API Request/Response Types ──────────────────────────────────────────────────
+
 export interface TriggerPipelineRequest {
-  title: string;
-  description?: string;
-  severity?: Severity;
+  title?: string;
+  severity?: Severity | string;
   source?: string;
   payload?: string;
+  bundle_file?: string;
 }
 
 export interface TriggerPipelineResponse {
@@ -143,28 +199,28 @@ export interface ListIncidentsResponse {
   limit: number;
 }
 
-export interface DraftRecoveryScriptResponse {
-  incident_id: string;
-  script: string;
-}
-
 export interface GetIncidentResponse {
   success: boolean;
-  data: Incident;
-  error?: string;
+  data: Incident | null;
+  error: string | null;
 }
 
 export interface GetIncidentStatusResponse {
   success: boolean;
-  data: Incident; // The full state is now in the data envelope
-  error?: string;
+  data: Incident | null;
+  error: string | null;
 }
 
-export const PIPELINE_STEPS = [
-  { key: "ingestion" as keyof PipelineState, label: "Data Ingestion" },
-  { key: "timeline" as keyof PipelineState, label: "Timeline Building" },
-  { key: "rca" as keyof PipelineState, label: "Root Cause Analysis" },
-  { key: "impact" as keyof PipelineState, label: "Impact Analysis" },
-  { key: "memory" as keyof PipelineState, label: "Memory Retrieval" },
-  { key: "actions" as keyof PipelineState, label: "Action Generation" },
-];
+export interface DraftRecoveryScriptResponse {
+  success: boolean;
+  data: { script: string } | null;
+  error: string | null;
+}
+
+// ── API Envelope ────────────────────────────────────────────────────────────────
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data: T | null;
+  error: string | null;
+}

@@ -18,22 +18,15 @@ const STATUS_STYLES: Record<IncidentStatus, { label: string; classes: string }> 
     label: "Completed",
     classes: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
   },
-  [IncidentStatus.RESOLVED]: {
-    label: "Resolved",
-    classes: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  [IncidentStatus.DEGRADED]: {
+    label: "Degraded",
+    classes: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   },
   [IncidentStatus.FAILED]: {
     label: "Failed",
     classes: "border-red-500/30 bg-red-500/10 text-red-400",
   },
-  [IncidentStatus.OPEN]: {
-    label: "Open",
-    classes: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-  },
-  [IncidentStatus.INVESTIGATING]: {
-    label: "Investigating",
-    classes: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-  },
+
   [IncidentStatus.PARTIAL]: {
     label: "Partial",
     classes: "border-amber-500/30 bg-amber-500/10 text-amber-400",

@@ -64,12 +64,19 @@ async def start_pipeline(payload: dict) -> str:
         raw_events, incident = await ingest_logs(payload, incident_id)
         state["incident"] = incident.model_dump(mode="json") if hasattr(incident, "model_dump") else incident
         state["raw_events_count"] = len(raw_events) if raw_events else 0
-        _mark_step(state, "ingestion", "COMPLETE")
+
+        # Check for DEGRADED status from ingestion
+        if incident.status == IncidentStatus.DEGRADED:
+            state["status"] = IncidentStatus.DEGRADED
+            _mark_step(state, "ingestion", "COMPLETE")
+        else:
+            _mark_step(state, "ingestion", "COMPLETE")
     except Exception as e:
         logger.exception("start_pipeline.ingestion_failed incident_id=%s", incident_id)
         _mark_step(state, "ingestion", "FAILED")
         state["status"] = IncidentStatus.FAILED
         state["error"] = f"Ingestion failed: {e}"
+        state["completed_at"] = datetime.now().isoformat()
         return incident_id
 
     # Launch remaining pipeline steps in background
@@ -81,6 +88,8 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
     """
     Execute pipeline steps 2-6 sequentially as a background task.
     Each step updates the shared state dict so the frontend can poll progress.
+
+    Wrapped in a top-level try/except to prevent silent exception swallowing.
     """
     from ..timeline.timeline_module import build_timeline
     from ..rca.rca_module import analyze_root_cause
@@ -134,7 +143,16 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
         except Exception:
             logger.exception("pipeline.impact_failed incident_id=%s", incident_id)
             _mark_step(state, "impact", "FAILED")
-            impact = None
+            # Create fallback impact so actions can still run
+            from ...schemas.impact import Impact, SeverityBand
+
+            impact = Impact(
+                incident_id=incident.incident_id,
+                affected_services=[incident.service],
+                severity_band=SeverityBand.MEDIUM,
+                probable_user_impact="Unknown",
+            )
+            state["impact"] = impact.model_dump(mode="json")
 
         # --- Step 5: Memory ---
         _mark_step(state, "memory", "RUNNING")
@@ -151,19 +169,7 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
         # --- Step 6: Actions ---
         _mark_step(state, "actions", "RUNNING")
         try:
-            if impact is not None:
-                actions = await generate_actions(incident, impact, hypothesis_list)
-            else:
-                # Create a minimal impact for action generation
-                from ...schemas.impact import Impact, SeverityBand
-
-                minimal_impact = Impact(
-                    incident_id=incident.incident_id,
-                    affected_services=[incident.service],
-                    severity_band=SeverityBand.MEDIUM,
-                    probable_user_impact="Unknown",
-                )
-                actions = await generate_actions(incident, minimal_impact, hypothesis_list)
+            actions = await generate_actions(incident, impact, hypothesis_list)
             state["actions"] = actions.model_dump(mode="json") if hasattr(actions, "model_dump") else actions
             _mark_step(state, "actions", "COMPLETE")
         except Exception:
@@ -173,7 +179,9 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
         # Determine final status: completed if all critical steps succeeded
         failed_steps = [k for k, v in state["pipeline_steps"].items() if v["status"] == "FAILED"]
         if not failed_steps:
-            state["status"] = IncidentStatus.COMPLETED
+            if state["status"] != IncidentStatus.DEGRADED:
+                state["status"] = IncidentStatus.COMPLETED
+            # If already DEGRADED from ingestion, keep it
         elif len(failed_steps) >= 3:
             state["status"] = IncidentStatus.FAILED
         else:
@@ -185,8 +193,9 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
         )
 
     except Exception as e:
+        # Top-level catch: prevent silent exception swallowing in background tasks
         logger.exception("pipeline.critical_failure incident_id=%s", incident_id)
-        state["status"] = "failed"
+        state["status"] = IncidentStatus.FAILED
         state["error"] = f"Pipeline crashed: {e}"
         state["completed_at"] = datetime.now().isoformat()
 

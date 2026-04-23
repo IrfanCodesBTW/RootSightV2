@@ -6,8 +6,9 @@ from ...schemas.impact import Impact
 from ...schemas.hypothesis import HypothesisList
 from ...schemas.action import ActionList, Action, ActionType, ApprovalStatus, ExecutionStatus
 from pydantic import ValidationError
-from ..llm_clients.groq_client import format_json, enforce_token_budget
-from ..llm_clients.gemini_client import generate, strip_fences
+from ..llm_clients.groq_client import format_json
+from ..llm_clients.gemini_client import generate
+from ..llm_clients.errors import strip_fences, enforce_token_budget
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,8 @@ async def generate_actions(incident: Incident, impact: Impact, hypothesis_list: 
     """
     Calls Groq (Llama 3) to rapidly format incident data into actionable drafts
     like a Jira ticket and a Slack update.
+
+    Always returns at least 1 action. Jira/Slack draft fields are never None (empty string default).
     """
     logger.info(
         "generate_actions.start incident_id=%s hypotheses=%s",
@@ -99,6 +102,18 @@ async def generate_actions(incident: Incident, impact: Impact, hypothesis_list: 
                     at = str(a.get("action_type", "jira_ticket")).lower()
                     if at not in {item.value for item in ActionType}:
                         a["action_type"] = "jira_ticket"
+                    # Ensure Jira/Slack fields are never None — use empty string default
+                    if a.get("destination") is None:
+                        a["destination"] = ""
+                    if a.get("payload_preview") is None:
+                        a["payload_preview"] = ""
+                    if a.get("full_payload") is None:
+                        a["full_payload"] = {}
+                    # Sanitize full_payload: replace None values with empty strings
+                    if isinstance(a.get("full_payload"), dict):
+                        a["full_payload"] = {
+                            k: (v if v is not None else "") for k, v in a["full_payload"].items()
+                        }
 
         try:
             result = ActionList(**response_dict)
@@ -109,7 +124,7 @@ async def generate_actions(incident: Incident, impact: Impact, hypothesis_list: 
             )
             return result
         except ValidationError as e:
-            logger.error(f"[ACTIONS] LLM output invalid: {e}")
+            logger.error("generate_actions.validation_failed incident_id=%s error=%s", incident.incident_id, e)
             return _fallback_action(incident.incident_id)
 
     except Exception:
@@ -129,13 +144,20 @@ async def draft_recovery_script_action(incident_id: str, incident_data: dict, rc
     Guidelines:
     1. Include safety checks (e.g. check if service is running).
     2. Add comments explaining each step.
-    3. Return ONLY the bash script inside ```bash fences.
+    3. Return ONLY a JSON object with a single "script" key containing the bash script as a string.
     """
     try:
+        prompt = enforce_token_budget(prompt)
         raw_response = await generate(prompt)
-        script = strip_fences(raw_response)
-        return script
+        # generate() returns a dict — extract the script text from it
+        if isinstance(raw_response, dict):
+            script = raw_response.get("script", "")
+            if not script:
+                # Fallback: try to reconstruct from the dict
+                script = json.dumps(raw_response, indent=2)
+            return script
+        # If somehow we got a string, strip fences
+        return strip_fences(str(raw_response))
     except Exception as e:
         logger.exception("draft_recovery_script_action.failed incident_id=%s", incident_id)
         raise e
-

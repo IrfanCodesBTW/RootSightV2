@@ -18,6 +18,7 @@ class IncidentStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     PARTIAL = "partial"
+    DEGRADED = "degraded"
 
 
 class IncidentBase(SQLModel):

@@ -9,7 +9,7 @@ export function MemoryCard({ similarIncidents }: MemoryCardProps) {
     return (
       <section className="rounded-xl border border-border p-4">
         <p className="text-sm font-medium">Similar Past Incidents</p>
-        <p className="mt-2 text-sm text-muted-foreground">No similar incidents found yet.</p>
+        <p className="mt-2 text-sm text-muted-foreground">No similar incidents found.</p>
       </section>
     );
   }
@@ -19,14 +19,14 @@ export function MemoryCard({ similarIncidents }: MemoryCardProps) {
       <p className="text-sm font-medium">Similar Past Incidents</p>
 
       {similarIncidents.map((incident) => (
-        <article key={incident.id} className="space-y-1">
+        <article key={`${incident.incident_id}-${incident.similar_to_id}`} className="space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">{incident.title}</p>
+            <p className="text-sm font-medium">{incident.why_similar}</p>
             <span className="text-xs text-muted-foreground">
               {Math.round(incident.similarity_score * 100)}% match
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">{incident.resolution_summary}</p>
+          <p className="text-xs text-muted-foreground">Fix: {incident.previous_fix}</p>
         </article>
       ))}
     </section>

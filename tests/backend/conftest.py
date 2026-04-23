@@ -1,8 +1,8 @@
 import pytest
 from sqlmodel import SQLModel, Session, create_engine
 
-# Test database
-sqlite_url = "sqlite:///./test_rootsight.db"
+# Test database — use in-memory for speed and isolation
+sqlite_url = "sqlite:///:memory:"
 engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
 

@@ -19,7 +19,11 @@ export function ScriptCard({ incidentId }: ScriptCardProps) {
     setError(null);
     try {
       const result = await api.draftRecoveryScript(incidentId);
-      setScript(result.script);
+      if (result) {
+        setScript(result.script);
+      } else {
+        setError("Failed to draft recovery script.");
+      }
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : "Failed to draft recovery script.");
     } finally {

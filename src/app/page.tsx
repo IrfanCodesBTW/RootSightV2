@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Incident, ListIncidentsResponse, IncidentStatus, PipelineStepStatus } from "@/types";
+import { Incident, ListIncidentsResponse, IncidentStatus, PipelineStepStatus, Severity } from "@/types";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { 
   Zap, AlertTriangle, CheckCircle2, Clock, 
@@ -27,8 +27,8 @@ export default function DashboardPage() {
       const res: ListIncidentsResponse = await api.listIncidents(1, 50);
       setIncidents(res.items);
       
-      const active = res.items.filter(i => i.status !== IncidentStatus.COMPLETED && i.status !== IncidentStatus.RESOLVED).length;
-      const resolved = res.items.filter(i => i.status === IncidentStatus.COMPLETED || i.status === IncidentStatus.RESOLVED).length;
+      const active = res.items.filter(i => i.status !== IncidentStatus.COMPLETED).length;
+      const resolved = res.items.filter(i => i.status === IncidentStatus.COMPLETED).length;
       
       // Calculate avg pipeline progress
       const totalProgress = res.items.reduce((acc, inc) => {
@@ -62,11 +62,6 @@ export default function DashboardPage() {
           <p className="text-gray-400">Real-time AI pipeline intelligence • Powered by Gemini + RootSight Engine</p>
         </div>
         <div className="flex items-center gap-3">
-          {api.isDemoMode() && (
-            <div className="px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold tracking-widest uppercase">
-              Demo Mode Active
-            </div>
-          )}
           <button 
             onClick={() => { setLoading(true); fetchIncidents(); }}
             className="p-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all"
@@ -139,24 +134,27 @@ export default function DashboardPage() {
                 </tr>
               ) : (
                 incidents.map((incident) => {
-                  const id = incident.incident_id || incident.id;
+                  const id = incident.incident_id;
+                  const incData = incident.incident;
+                  const title = incData?.title ?? "Untitled Incident";
+                  const severity = incData?.severity ?? "P2";
                   return (
                     <tr key={id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer">
                       <td className="px-6 py-4" onClick={() => window.location.href = `/incidents/${id}`}>
-                        <div className="font-medium text-gray-200 group-hover:text-white transition-colors">{incident.title}</div>
-                        <div className="text-[10px] font-mono text-gray-500 mt-1 uppercase">{incident.external_id || id}</div>
+                        <div className="font-medium text-gray-200 group-hover:text-white transition-colors">{title}</div>
+                        <div className="text-[10px] font-mono text-gray-500 mt-1 uppercase">{id}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <SeverityIndicator severity={incident.severity} />
+                        <SeverityIndicator severity={severity as Severity} />
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={incident.status} />
+                        <StatusBadge status={incident.status as IncidentStatus} />
                       </td>
                       <td className="px-6 py-4">
                         <PipelineMini progress={calculateProgress(incident)} />
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {formatRelativeTime(incident.created_at)}
+                        {formatRelativeTime(incident.started_at || new Date().toISOString())}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link 
@@ -212,9 +210,9 @@ function PipelineMini({ progress }: { progress: number }) {
 }
 
 function calculateProgress(incident: Incident) {
-  if (!incident.pipeline_state) return 0;
-  const steps = Object.values(incident.pipeline_state);
+  if (!incident.pipeline_steps) return 0;
+  const steps = Object.values(incident.pipeline_steps);
   if (steps.length === 0) return 0;
-  const completed = steps.filter(s => s.status === PipelineStepStatus.COMPLETE).length;
+  const completed = steps.filter(s => s?.status === PipelineStepStatus.COMPLETE).length;
   return Math.round((completed / steps.length) * 100);
 }

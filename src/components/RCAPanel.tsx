@@ -19,17 +19,21 @@ export function RCAPanel({ hypotheses }: RCAPanelProps) {
     <section className="space-y-4 rounded-xl border border-border p-4">
       <p className="text-sm font-medium">Root Cause Analysis</p>
       {hypotheses.map((hypothesis) => (
-        <article key={`${hypothesis.rank}-${hypothesis.id}`} className="space-y-2">
+        <article key={`${hypothesis.rank}-${hypothesis.hypothesis_id}`} className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium">
-              #{hypothesis.rank} {hypothesis.title}
+              #{hypothesis.rank} {hypothesis.statement}
             </p>
             <div className="w-36">
-              <ConfidenceBar confidence={hypothesis.confidence} />
+              <ConfidenceBar confidence={hypothesis.confidence_score} />
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">{hypothesis.description}</p>
-          {hypothesis.supporting_evidence.length > 0 && (
+          {hypothesis.severity_band && (
+            <p className="text-xs text-yellow-500">
+              Severity override: {hypothesis.severity_band}
+            </p>
+          )}
+          {hypothesis.supporting_evidence && hypothesis.supporting_evidence.length > 0 && (
             <ul className="list-inside list-disc text-xs text-muted-foreground">
               {hypothesis.supporting_evidence.map((item) => (
                 <li key={item}>{item}</li>

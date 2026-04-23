@@ -9,9 +9,10 @@ client = TestClient(app, raise_server_exceptions=False)
 
 def test_trigger_route_returns_envelope():
     with patch("src.main.start_pipeline", return_value="abc123"):
-        response = client.post("/api/trigger", json={"bundle_file": "db_connection_pool.json"})
+        response = client.post("/api/trigger", json={"title": "Test incident", "source": "manual"})
 
-    assert response.status_code == 200
+    # Now returns 202 Accepted
+    assert response.status_code == 202
     body = response.json()
     assert body["success"] is True
     assert body["data"] == {"incident_id": "abc123", "status": "pipeline_started"}
@@ -25,7 +26,7 @@ def test_trigger_route_rejects_empty_payload_with_consistent_error():
     body = response.json()
     assert body["success"] is False
     assert body["data"] is None
-    assert "Invalid request payload" in body["error"] or "non-empty" in body["error"]
+    assert "title" in body["error"].lower() or "non-empty" in body["error"].lower() or "bundle_file" in body["error"].lower()
 
 
 def test_get_incident_route_returns_envelope():
@@ -54,7 +55,7 @@ def test_get_incident_route_returns_envelope():
     }
 
     with patch("src.main.get_pipeline_state", return_value=sample_state):
-        response = client.get("/api/incident/abc123")
+        response = client.get("/api/incidents/abc123")
 
     assert response.status_code == 200
     body = response.json()
@@ -65,7 +66,7 @@ def test_get_incident_route_returns_envelope():
 
 def test_get_incident_route_returns_not_found_envelope():
     with patch("src.main.get_pipeline_state", return_value=None):
-        response = client.get("/api/incident/missing")
+        response = client.get("/api/incidents/missing")
 
     assert response.status_code == 404
     body = response.json()
@@ -76,9 +77,18 @@ def test_get_incident_route_returns_not_found_envelope():
 
 def test_global_exception_handler_hides_traceback():
     with patch("src.main.start_pipeline", side_effect=RuntimeError("boom")):
-        response = client.post("/api/trigger", json={"bundle_file": "db_connection_pool.json"})
+        response = client.post("/api/trigger", json={"title": "Test incident", "source": "manual"})
 
     assert response.status_code == 500
     body = response.json()
     assert body["data"] is None
     assert body["error"] == "Internal server error."
+
+
+def test_health_endpoint():
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["status"] == "ok"
+    assert body["data"]["version"] == "3.0.0"

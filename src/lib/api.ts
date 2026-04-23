@@ -1,145 +1,181 @@
-// API client for RootSight backend
-import {
+import type {
   Incident,
   TriggerPipelineRequest,
   TriggerPipelineResponse,
   ListIncidentsResponse,
-  GetIncidentResponse,
-  GetIncidentStatusResponse,
-  DraftRecoveryScriptResponse,
+  ApiResponse,
 } from "@/types";
-import { generateMockIncident, generateMockIncidents } from "@/lib/mock-data";
+import { generateMockIncident } from "./mock-data";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-class RootSightAPI {
-  private baseURL: string;
-  private demoMode: boolean;
+// ── Helpers ─────────────────────────────────────────────────────────────────────
 
-  constructor() {
-    this.baseURL = API_BASE || API_URL;
-    this.demoMode = false;
-  }
-
-  enableDemoMode() { this.demoMode = true; }
-  disableDemoMode() { this.demoMode = false; }
-  isDemoMode(): boolean { return this.demoMode; }
-
-  /**
-   * Unwrap the backend's {success, data, error} envelope.
-   * Returns `data` on success, throws on error.
-   */
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    try {
-      const url = `${this.baseURL}${endpoint}`;
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-      });
-
-      const json = await response.json();
-
-      if (json && typeof json === "object" && "success" in json) {
-        if (!json.success || json.error) {
-          throw new Error(json.error || `Request failed: ${response.status}`);
-        }
-        return json.data as T;
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return json as T;
-    } catch (error) {
-      if (!this.demoMode && error instanceof TypeError && (error.message.includes("fetch") || error.message.includes("network"))) {
-        console.warn("Backend unreachable, enabling demo mode", error);
-        this.demoMode = true;
-      }
-      throw error;
-    }
-  }
-
-  // Trigger new incident pipeline
-  async triggerPipeline(request: TriggerPipelineRequest): Promise<TriggerPipelineResponse> {
-    if (this.demoMode) {
-      return { incident_id: `demo-${Date.now()}`, status: "RUNNING" };
-    }
-    return this.request<TriggerPipelineResponse>("/trigger", {
-      method: "POST",
-      body: JSON.stringify(request),
+async function fetchJson<T>(
+  url: string,
+  init?: RequestInit
+): Promise<ApiResponse<T>> {
+  try {
+    const res = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      ...init,
     });
-  }
-
-  // List all incidents
-  async listIncidents(page: number = 1, limit: number = 20): Promise<ListIncidentsResponse> {
-    if (this.demoMode) {
-      const items = generateMockIncidents(limit);
-      return { items, total: items.length, page, limit };
-    }
-    try {
-      return await this.request<ListIncidentsResponse>(`/incidents?page=${page}&limit=${limit}`);
-    } catch (e) {
-      console.warn("listIncidents failed, using demo data", e);
-      this.demoMode = true;
-      const items = generateMockIncidents(limit);
-      return { items, total: items.length, page, limit };
-    }
-  }
-
-  // Get specific incident (returns full state)
-  async getIncident(incidentId: string): Promise<Incident> {
-    if (this.demoMode) {
-      return generateMockIncident(incidentId);
-    }
-    try {
-      return await this.request<Incident>(`/incident/${incidentId}`);
-    } catch (e) {
-      console.warn("getIncident failed, using demo data", e);
-      return generateMockIncident(incidentId);
-    }
-  }
-
-  // Get incident status (wrapper for polling if needed)
-  async getIncidentStatus(incidentId: string): Promise<Incident> {
-    return this.getIncident(incidentId);
-  }
-
-  // Draft recovery script
-  async draftRecoveryScript(incidentId: string): Promise<DraftRecoveryScriptResponse> {
-    if (this.demoMode) {
+    const body = await res.json();
+    if (!res.ok || body?.success === false) {
       return {
-        incident_id: incidentId,
-        script: `#!/bin/bash\n# Mock recovery script\necho "Restarting services..."`,
+        success: false,
+        data: null,
+        error:
+          body?.error ?? body?.message ?? `HTTP ${res.status}: ${res.statusText}`,
       };
     }
-    return this.request<DraftRecoveryScriptResponse>(`/incident/${incidentId}/draft-script`, { method: "POST" });
-  }
-
-  // Health check
-  async healthCheck(): Promise<{ status: string }> {
-    try {
-      return await this.request<{ status: string }>("/health");
-    } catch {
-      return { status: "unreachable" };
+    // API returns { success, data, error } envelope
+    if ("data" in body) {
+      return { success: true, data: body.data as T, error: null };
     }
+    return { success: true, data: body as T, error: null };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Network error";
+    return { success: false, data: null, error: message };
   }
 }
 
-export const api = new RootSightAPI();
+// ── Demo mode helpers ───────────────────────────────────────────────────────────
 
-export const checkBackendHealth = async (): Promise<boolean> => {
-  try {
-    const health = await api.healthCheck();
-    return health.status === "healthy";
-  } catch {
-    return false;
+const DEMO_MODE =
+  typeof window !== "undefined"
+    ? process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+    : false;
+
+function isDemoMode(): boolean {
+  return DEMO_MODE;
+}
+
+// ── API Client ──────────────────────────────────────────────────────────────────
+
+class RootSightAPI {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = API_BASE) {
+    this.baseUrl = baseUrl;
   }
-};
+
+  /** Check if backend is healthy */
+  async checkBackendHealth(): Promise<{ healthy: boolean }> {
+    try {
+      const res = await fetchJson<{ status: string; version: string }>(
+        `${this.baseUrl}/api/health`
+      );
+      return { healthy: res.success && res.data?.status === "ok" };
+    } catch {
+      return { healthy: false };
+    }
+  }
+
+  /** Trigger the analysis pipeline */
+  async triggerPipeline(
+    req: TriggerPipelineRequest
+  ): Promise<TriggerPipelineResponse> {
+    if (isDemoMode()) {
+      const mockId = `demo-${Date.now().toString(36)}`;
+      return { incident_id: mockId, status: "pipeline_started" };
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (req.title) payload.title = req.title;
+    if (req.severity) payload.severity = req.severity;
+    if (req.source) payload.source = req.source;
+    if (req.bundle_file) payload.bundle_file = req.bundle_file;
+    if (req.payload) {
+      try {
+        const parsed = JSON.parse(req.payload);
+        Object.assign(payload, parsed);
+      } catch {
+        // If payload is not valid JSON, use it as description
+        payload.description = req.payload;
+      }
+    }
+
+    const res = await fetchJson<TriggerPipelineResponse>(
+      `${this.baseUrl}/api/trigger`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+
+    if (!res.success || !res.data) {
+      throw new Error(res.error ?? "Failed to trigger pipeline");
+    }
+    return res.data;
+  }
+
+  /** Get a single incident by ID */
+  async getIncident(incidentId: string): Promise<Incident | null> {
+    if (isDemoMode()) {
+      return generateMockIncident(incidentId);
+    }
+
+    const res = await fetchJson<Incident>(
+      `${this.baseUrl}/api/incidents/${incidentId}`
+    );
+    return res.data ?? null;
+  }
+
+  /** List all incidents */
+  async listIncidents(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<ListIncidentsResponse> {
+    const emptyResponse: ListIncidentsResponse = {
+      items: [],
+      total: 0,
+      page,
+      limit,
+    };
+
+    if (isDemoMode()) {
+      const items = [
+        generateMockIncident("demo-1"),
+        generateMockIncident("demo-2"),
+        generateMockIncident("demo-3"),
+      ];
+      return { items, total: items.length, page: 1, limit: 20 };
+    }
+
+    const res = await fetchJson<ListIncidentsResponse>(
+      `${this.baseUrl}/api/incidents?page=${page}&limit=${limit}`
+    );
+    return res.data ?? emptyResponse;
+  }
+
+  /** Get pipeline state for an incident */
+  async getPipelineState(
+    incidentId: string
+  ): Promise<ApiResponse<Incident>> {
+    if (isDemoMode()) {
+      return {
+        success: true,
+        data: generateMockIncident(incidentId),
+        error: null,
+      };
+    }
+
+    return fetchJson<Incident>(
+      `${this.baseUrl}/api/incidents/${incidentId}/pipeline`
+    );
+  }
+
+  /** Draft a recovery script */
+  async draftRecoveryScript(
+    incidentId: string
+  ): Promise<{ script: string } | null> {
+    const res = await fetchJson<{ script: string }>(
+      `${this.baseUrl}/api/incident/${incidentId}/draft-script`,
+      { method: "POST" }
+    );
+    return res.data ?? null;
+  }
+}
+
+// ── Singleton export ────────────────────────────────────────────────────────────
+export const api = new RootSightAPI();
+export { RootSightAPI };

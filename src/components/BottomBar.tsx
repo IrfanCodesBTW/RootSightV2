@@ -14,7 +14,7 @@ export function BottomBar({ incident }: BottomBarProps) {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `rootsight-${incident.id}.json`;
+    link.download = `rootsight-${incident.incident_id}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -26,7 +26,7 @@ export function BottomBar({ incident }: BottomBarProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between border-t border-border bg-background/90 px-6 py-3 backdrop-blur-sm">
       <p className="text-xs text-muted-foreground">
-        {incident.title} - {incident.status}
+        {incident.incident?.title ?? "Untitled"} - {incident.status}
       </p>
       <button
         onClick={handleExport}

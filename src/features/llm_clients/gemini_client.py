@@ -1,11 +1,10 @@
 import asyncio
 import json
 import logging
-import re
 
 import google.generativeai as genai
 
-from .errors import LLMClientError
+from .errors import LLMClientError, strip_fences, enforce_token_budget
 from ...utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -18,29 +17,14 @@ else:
 model = genai.GenerativeModel(settings.GEMINI_MODEL)
 
 
-def strip_fences(text: str) -> str:
-    """Remove markdown code fences from LLM output without corrupting inner content."""
-    text = text.strip()
-    # Match ```json ... ``` or ``` ... ``` blocks, extracting inner content
-    pattern = r"^```(?:json|JSON)?\s*\n?(.*?)```\s*$"
-    match = re.match(pattern, text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return text
-
-
-def enforce_token_budget(text: str, max_tokens: int = 3000) -> str:
-    max_chars = max_tokens * 4
-    if len(text) > max_chars:
-        logger.warning(f"[TOKEN] Truncated: {len(text)} → {max_chars} chars")
-        return text[:max_chars]
-    return text
+# Re-export shared utilities for backward compatibility
+__all__ = ["generate", "strip_fences", "enforce_token_budget", "LLMClientError"]
 
 
 async def generate(prompt: str, max_retries: int = 3) -> dict:
     """Call Gemini and return parsed JSON dict. Raises LLMClientError on failure."""
     if not prompt or not str(prompt).strip():
-        raise ValueError("Prompt must be a non-empty string.")
+        raise LLMClientError("Gemini", "Prompt must be a non-empty string.")
 
     prompt = enforce_token_budget(prompt)
 
@@ -63,7 +47,19 @@ async def generate(prompt: str, max_retries: int = 3) -> dict:
         except LLMClientError:
             raise
         except Exception as e:
-            logger.warning("gemini_client.request_failed attempt=%s/%s error=%s", attempt + 1, max_retries, e)
+            # Detect rate-limit or server errors for backoff logging
+            err_str = str(e).lower()
+            is_retryable = any(code in err_str for code in ("429", "503", "rate", "quota", "resource_exhausted"))
+            if is_retryable:
+                logger.warning(
+                    "gemini_client.rate_limited attempt=%s/%s error=%s backoff=%ss",
+                    attempt + 1,
+                    max_retries,
+                    e,
+                    2**attempt,
+                )
+            else:
+                logger.warning("gemini_client.request_failed attempt=%s/%s error=%s", attempt + 1, max_retries, e)
             if attempt == max_retries - 1:
                 raise LLMClientError("Gemini", f"Request failed after {max_retries} attempts: {e}", e)
             await asyncio.sleep(2**attempt)

@@ -5,7 +5,8 @@ from ...schemas.incident import Incident
 from ...schemas.event import EventList
 from ...schemas.hypothesis import HypothesisList, Hypothesis
 from pydantic import ValidationError
-from ..llm_clients.gemini_client import generate, enforce_token_budget
+from ..llm_clients.gemini_client import generate
+from ..llm_clients.errors import enforce_token_budget
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,17 @@ async def analyze_root_cause(event_list: EventList, incident: Incident) -> Hypot
 
         try:
             result = HypothesisList(**response_dict)
-            result.hypotheses.sort(key=lambda h: h.rank)
+
+            # Ensure at least 1 hypothesis
+            if not result.hypotheses:
+                return _fallback_hypothesis(incident.incident_id, "LLM returned no hypotheses.")
+
+            # Sort hypotheses by confidence_score descending
+            result.hypotheses.sort(key=lambda h: h.confidence_score, reverse=True)
+
+            # Re-assign ranks based on sorted order
+            for i, h in enumerate(result.hypotheses):
+                h.rank = i + 1
 
             # Post-validation low confidence check
             if result.hypotheses and result.hypotheses[0].confidence_score < 30:
@@ -83,7 +94,7 @@ async def analyze_root_cause(event_list: EventList, incident: Incident) -> Hypot
             )
             return result
         except ValidationError as e:
-            logger.error(f"[RCA] LLM output invalid: {e}")
+            logger.error("analyze_root_cause.validation_failed incident_id=%s error=%s", incident.incident_id, e)
             return _fallback_hypothesis(incident.incident_id, f"Validation failed: {e}")
 
     except Exception as e:
@@ -92,20 +103,22 @@ async def analyze_root_cause(event_list: EventList, incident: Incident) -> Hypot
 
 
 def _fallback_hypothesis(incident_id: str, note: str) -> HypothesisList:
+    """Return a single 'Manual investigation required' hypothesis as fallback."""
     logger.warning("analyze_root_cause.fallback incident_id=%s note=%s", incident_id, note)
     fallback = Hypothesis(
         hypothesis_id=str(uuid.uuid4())[:8],
         incident_id=incident_id,
         rank=1,
-        statement="Undetermined - insufficient data",
-        confidence_score=10,
+        statement="Manual investigation required",
+        confidence_score=0,
         supporting_evidence=[],
         contradicting_evidence=[],
         missing_information=["Full system logs", "Metrics dashboard access"],
+        severity_band="low",
     )
     return HypothesisList(
         hypotheses=[fallback],
-        analysis_confidence=10,
+        analysis_confidence=0,
         is_low_confidence=True,
         analysis_note=note,
     )

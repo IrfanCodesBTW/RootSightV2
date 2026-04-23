@@ -47,7 +47,7 @@ async def test_analyze_root_cause_empty(sample_incident):
     empty_list = EventList(events=[], timeline_confidence=0, gaps_detected=0, total_events=0)
     result = await analyze_root_cause(empty_list, sample_incident)
     assert len(result.hypotheses) == 1
-    assert "insufficient data" in result.hypotheses[0].statement
+    assert "Manual investigation required" in result.hypotheses[0].statement
     assert result.is_low_confidence is True
 
 
@@ -84,5 +84,5 @@ async def test_analyze_root_cause_failure_returns_fallback(mock_generate, sample
 
     result = await analyze_root_cause(sample_event_list, sample_incident)
     assert len(result.hypotheses) == 1
-    assert result.hypotheses[0].statement == "Undetermined - insufficient data"
+    assert result.hypotheses[0].statement == "Manual investigation required"
     assert result.is_low_confidence is True

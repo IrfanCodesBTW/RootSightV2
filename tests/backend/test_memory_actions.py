@@ -47,6 +47,7 @@ def sample_impact():
     return Impact(
         incident_id="test-123",
         affected_services=["test-service"],
+        affected_users=0,
         severity_band=SeverityBand.CRITICAL,
         probable_user_impact="Users cannot login",
     )
@@ -108,6 +109,6 @@ async def test_generate_actions_failure_returns_fallback(
     mock_format_json.return_value = None
 
     result = await generate_actions(sample_incident, sample_impact, sample_hypotheses)
-    # Now returns a fallback manual_review action instead of empty
+    # Returns a fallback manual_review action instead of empty
     assert len(result.actions) == 1
     assert result.actions[0].action_type == ActionType.MANUAL_REVIEW

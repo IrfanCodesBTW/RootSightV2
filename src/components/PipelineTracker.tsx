@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Incident, PipelineState, PipelineStepStatus } from "@/types";
+import { Incident, PipelineState, PipelineStepStatus, IncidentStatus } from "@/types";
 import { PIPELINE_STEPS } from "@/types";
 
 interface PipelineTrackerProps {
@@ -9,14 +9,23 @@ interface PipelineTrackerProps {
 export function PipelineTracker({ incident }: PipelineTrackerProps) {
   if (!incident) return null;
 
-  const pipelineState = incident.pipeline_state;
-  if (!pipelineState) return null;
+  const pipelineState = incident.pipeline_steps;
+  if (!pipelineState) {
+    return (
+      <section className="space-y-3 rounded-xl border border-border p-4">
+        <p className="text-sm font-medium">Pipeline Progress</p>
+        <p className="text-sm text-muted-foreground">Pipeline not started yet.</p>
+      </section>
+    );
+  }
 
   const pipelineKeys = Object.keys(pipelineState) as Array<keyof PipelineState>;
   const completedSteps = pipelineKeys.filter(
     (k) => pipelineState[k]?.status === PipelineStepStatus.COMPLETE
   ).length;
-  const progress = Math.round((completedSteps / pipelineKeys.length) * 100);
+  const progress = pipelineKeys.length > 0
+    ? Math.round((completedSteps / pipelineKeys.length) * 100)
+    : 0;
 
   return (
     <section className="space-y-3 rounded-xl border border-border p-4">
@@ -57,9 +66,14 @@ export function PipelineTracker({ incident }: PipelineTrackerProps) {
         })}
       </div>
 
-      {incident.status === "FAILED" && (
+      {incident.status === IncidentStatus.FAILED && (
         <p className="text-xs text-destructive">
           Pipeline failed. Check logs for details.
+        </p>
+      )}
+      {incident.status === IncidentStatus.DEGRADED && (
+        <p className="text-xs text-yellow-500">
+          Pipeline ran in degraded mode — some data sources were unavailable.
         </p>
       )}
     </section>

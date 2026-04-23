@@ -21,12 +21,14 @@ export type {
   GetIncidentResponse,
   GetIncidentStatusResponse,
   DraftRecoveryScriptResponse,
+  SeverityBand,
+  ApiResponse,
 } from "./index";
 
-export { PIPELINE_STEPS } from "./index";
+export { PIPELINE_STEPS, PipelineStepStatus as PipelineStepStatusEnum } from "./index";
 
 // Backward-compatible aliases for components using the old type names
-import type { Incident as _Incident, Event as _Event, Impact as _Impact } from "./index";
+import type { Incident as _Incident, Event as _Event } from "./index";
 
 /** @deprecated Use `Incident` instead */
 export type IncidentDetail = _Incident;
@@ -35,6 +37,7 @@ export type IncidentDetail = _Incident;
 export type TimelineEvent = _Event;
 
 // Re-export enums for components using enum-style types
+// Aligned with Python: src/schemas/event.py → EventType
 export const EventType = {
   DEPLOY: "deploy",
   ERROR_SPIKE: "error_spike",
@@ -51,15 +54,25 @@ export const EventType = {
   UNKNOWN: "unknown",
 } as const;
 
+// Aligned with Python: src/schemas/action.py → ActionType
 export const ActionType = {
-  SLACK_DRAFT: "slack_draft",
-  JIRA_DRAFT: "jira_draft",
-  RUNBOOK: "runbook",
-  ESCALATION: "escalation",
+  JIRA_TICKET: "jira_ticket",
+  SLACK_RESPONDER: "slack_responder",
+  SLACK_STAKEHOLDER: "slack_stakeholder",
+  CONFLUENCE_RCA: "confluence_rca",
+  MANUAL_REVIEW: "manual_review",
 } as const;
 
+// Aligned with Python: src/schemas/action.py → ApprovalStatus
 export const ApprovalStatus = {
-  PENDING: "pending",
+  PENDING: "pending_approval",
   APPROVED: "approved",
   REJECTED: "rejected",
+} as const;
+
+// Aligned with Python: src/schemas/action.py → ExecutionStatus
+export const ExecutionStatus = {
+  DRAFT: "draft",
+  SENT: "sent",
+  FAILED: "failed",
 } as const;
