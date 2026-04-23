@@ -49,10 +49,7 @@ async def generate(prompt: str, max_retries: int = 3) -> dict:
             response = await asyncio.to_thread(
                 model.generate_content,
                 prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.2,
-                    max_output_tokens=2048
-                )
+                generation_config=genai.types.GenerationConfig(temperature=0.2, max_output_tokens=2048),
             )
             text = getattr(response, "text", None)
             if not isinstance(text, str) or not text.strip():
@@ -62,11 +59,11 @@ async def generate(prompt: str, max_retries: int = 3) -> dict:
             logger.warning("gemini_client.invalid_json attempt=%s/%s error=%s", attempt + 1, max_retries, e)
             if attempt == max_retries - 1:
                 raise LLMClientError("Gemini", f"Invalid JSON after {max_retries} attempts: {e}", e)
-            await asyncio.sleep(2 ** attempt)
+            await asyncio.sleep(2**attempt)
         except LLMClientError:
             raise
         except Exception as e:
             logger.warning("gemini_client.request_failed attempt=%s/%s error=%s", attempt + 1, max_retries, e)
             if attempt == max_retries - 1:
                 raise LLMClientError("Gemini", f"Request failed after {max_retries} attempts: {e}", e)
-            await asyncio.sleep(2 ** attempt)
+            await asyncio.sleep(2**attempt)

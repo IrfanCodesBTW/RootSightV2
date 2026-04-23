@@ -29,6 +29,26 @@ By participating in this project, you are expected to uphold our Code of Conduct
 - **Update documentation.** If you change functionality, update the README or relevant docs.
 - **Follow the coding style.** Use the existing code as a guide.
 
+## Coding Standards
+
+To maintain a professional and clean codebase, please adhere to the following standards:
+
+1. **Python (Backend)**
+   - Follow PEP 8 style guide.
+   - Use `ruff` for linting and formatting (`uv run ruff check .` and `uv run ruff format .`).
+   - Use Google-style docstrings for all functions, classes, and modules.
+   - Centralize error handling using FastAPI's exception handlers and the `api_response.py` utility.
+
+2. **TypeScript/React (Frontend)**
+   - Use `eslint` and `prettier` for code quality (`npm run lint`).
+   - Follow strict TypeScript typing; avoid using `any`.
+   - Name files according to their primary export (e.g., `PascalCase.tsx` for components).
+   - Prefix types and interfaces properly or group them in the `src/types` directory.
+
+3. **Architecture**
+   - Keep business logic separated from routing and UI layers.
+   - Place shared components in `src/components` and generic utilities in `src/utils` or `src/lib`.
+
 ## Development Setup
 
 ### Prerequisites

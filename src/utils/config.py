@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
+
 class Settings(BaseSettings):
     # AI APIs
     GEMINI_API_KEY: str = ""
@@ -30,5 +31,6 @@ class Settings(BaseSettings):
     API_ERROR_DETAIL_IN_RESPONSE: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 settings = Settings()

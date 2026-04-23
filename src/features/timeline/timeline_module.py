@@ -3,22 +3,17 @@ import logging
 import uuid
 from typing import List
 from ...schemas.incident import Incident
-from ...schemas.event import EventList, Event, EventType
+from ...schemas.event import EventList, EventType
 from ..ingestion.ingestion_service import RawEvent
 from pydantic import ValidationError
 from ..llm_clients.gemini_client import generate, enforce_token_budget
-from ..llm_clients.errors import LLMClientError
 
 logger = logging.getLogger(__name__)
 
+
 def _fallback_timeline(incident: Incident, note: str = "Falling back due to error.") -> EventList:
-    return EventList(
-        events=[],
-        timeline_confidence=0,
-        gaps_detected=0,
-        total_events=0,
-        analysis_note=note
-    )
+    return EventList(events=[], timeline_confidence=0, gaps_detected=0, total_events=0, analysis_note=note)
+
 
 async def build_timeline(raw_events: List[RawEvent], incident: Incident) -> EventList:
     """
@@ -85,7 +80,9 @@ async def build_timeline(raw_events: List[RawEvent], incident: Incident) -> Even
 
         try:
             event_list = EventList(**response_dict)
-            logger.info("build_timeline.complete incident_id=%s events=%s", incident.incident_id, len(event_list.events))
+            logger.info(
+                "build_timeline.complete incident_id=%s events=%s", incident.incident_id, len(event_list.events)
+            )
             return event_list
         except ValidationError as e:
             logger.error(f"[TIMELINE] LLM output invalid: {e}")

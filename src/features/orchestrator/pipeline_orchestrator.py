@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime
@@ -101,11 +100,12 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
             event_list = await build_timeline(raw_events, incident)
             state["timeline"] = event_list.model_dump(mode="json") if hasattr(event_list, "model_dump") else event_list
             _mark_step(state, "timeline", "COMPLETE")
-        except Exception as e:
+        except Exception:
             logger.exception("pipeline.timeline_failed incident_id=%s", incident_id)
             _mark_step(state, "timeline", "FAILED")
             # Continue with empty timeline
             from ...schemas.event import EventList
+
             event_list = EventList(events=[], timeline_confidence=0, gaps_detected=0, total_events=0)
             state["timeline"] = event_list.model_dump(mode="json")
 
@@ -113,12 +113,15 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
         _mark_step(state, "rca", "RUNNING")
         try:
             hypothesis_list = await analyze_root_cause(event_list, incident)
-            state["rca"] = hypothesis_list.model_dump(mode="json") if hasattr(hypothesis_list, "model_dump") else hypothesis_list
+            state["rca"] = (
+                hypothesis_list.model_dump(mode="json") if hasattr(hypothesis_list, "model_dump") else hypothesis_list
+            )
             _mark_step(state, "rca", "COMPLETE")
-        except Exception as e:
+        except Exception:
             logger.exception("pipeline.rca_failed incident_id=%s", incident_id)
             _mark_step(state, "rca", "FAILED")
             from ...schemas.hypothesis import HypothesisList
+
             hypothesis_list = HypothesisList(hypotheses=[], analysis_confidence=0, is_low_confidence=True)
             state["rca"] = hypothesis_list.model_dump(mode="json")
 
@@ -128,7 +131,7 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
             impact = await analyze_impact(incident, event_list, hypothesis_list)
             state["impact"] = impact.model_dump(mode="json") if hasattr(impact, "model_dump") else impact
             _mark_step(state, "impact", "COMPLETE")
-        except Exception as e:
+        except Exception:
             logger.exception("pipeline.impact_failed incident_id=%s", incident_id)
             _mark_step(state, "impact", "FAILED")
             impact = None
@@ -137,9 +140,11 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
         _mark_step(state, "memory", "RUNNING")
         try:
             memory_result = await find_similar_incidents(incident, hypothesis_list)
-            state["memory"] = memory_result.model_dump(mode="json") if hasattr(memory_result, "model_dump") else memory_result
+            state["memory"] = (
+                memory_result.model_dump(mode="json") if hasattr(memory_result, "model_dump") else memory_result
+            )
             _mark_step(state, "memory", "COMPLETE")
-        except Exception as e:
+        except Exception:
             logger.exception("pipeline.memory_failed incident_id=%s", incident_id)
             _mark_step(state, "memory", "FAILED")
 
@@ -151,6 +156,7 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
             else:
                 # Create a minimal impact for action generation
                 from ...schemas.impact import Impact, SeverityBand
+
                 minimal_impact = Impact(
                     incident_id=incident.incident_id,
                     affected_services=[incident.service],
@@ -160,7 +166,7 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
                 actions = await generate_actions(incident, minimal_impact, hypothesis_list)
             state["actions"] = actions.model_dump(mode="json") if hasattr(actions, "model_dump") else actions
             _mark_step(state, "actions", "COMPLETE")
-        except Exception as e:
+        except Exception:
             logger.exception("pipeline.actions_failed incident_id=%s", incident_id)
             _mark_step(state, "actions", "FAILED")
 
@@ -175,8 +181,7 @@ async def _run_pipeline_async(incident_id: str, raw_events, incident):
 
         state["completed_at"] = datetime.now().isoformat()
         logger.info(
-            "pipeline.complete incident_id=%s status=%s failed_steps=%s",
-            incident_id, state["status"], failed_steps
+            "pipeline.complete incident_id=%s status=%s failed_steps=%s", incident_id, state["status"], failed_steps
         )
 
     except Exception as e:

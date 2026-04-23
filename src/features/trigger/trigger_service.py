@@ -20,6 +20,7 @@ def _resolve_bundle_path(bundle_file: str) -> Path:
         raise HTTPException(status_code=422, detail="Invalid bundle_file location.")
     return bundle_path
 
+
 def handle_trigger(payload: dict, session: Session) -> dict:
     """
     Handles an incoming incident trigger.
@@ -63,9 +64,9 @@ def handle_trigger(payload: dict, session: Session) -> dict:
         **incident_create.model_dump(),
         incident_id=incident_id,
         detected_at=datetime.now(timezone.utc),
-        status=IncidentStatus.ACTIVE
+        status=IncidentStatus.ACTIVE,
     )
-    
+
     if session:
         try:
             session.add(incident)

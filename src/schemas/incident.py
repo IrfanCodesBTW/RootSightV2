@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 from enum import Enum
 
+
 class Severity(str, Enum):
     P0 = "P0"
     P1 = "P1"
@@ -10,12 +11,14 @@ class Severity(str, Enum):
     P3 = "P3"
     P4 = "P4"
 
+
 class IncidentStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
     PARTIAL = "partial"
+
 
 class IncidentBase(SQLModel):
     title: str = Field(min_length=1, max_length=200)
@@ -27,8 +30,10 @@ class IncidentBase(SQLModel):
     description: Optional[str] = None
     started_at: datetime
 
+
 class IncidentCreate(IncidentBase):
     pass
+
 
 class Incident(IncidentBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

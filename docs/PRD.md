@@ -75,6 +75,7 @@ To provide every engineering team with enterprise-grade incident intelligence th
 ### Memory & Actions
 - The system SHALL retrieve the top 3 similar past incidents using local embeddings.
 - The system SHALL generate Slack and Jira drafts in "pending" status.
+- The system SHALL automatically draft safe, idempotent bash recovery scripts based on the RCA.
 
 ---
 
@@ -108,8 +109,8 @@ RootSight V3 uses an async FastAPI backend serving a Next.js 15/Tailwind 4 front
 | :--- | :--- | :--- |
 | **M1: Core Pipeline** | Trigger to RCA output. | Completed |
 | **M2: UI Dashboard** | Next.js 15 operational dashboard. | Completed |
-| **M3: Memory** | Similarity search via FAISS. | In Progress |
-| **M4: Actions** | One-click Jira/Slack drafts. | Planned |
+| **M3: Memory** | Similarity search via FAISS. | Completed |
+| **M4: Actions** | One-click Jira/Slack drafts & Recovery Scripts. | Completed |
 
 ---
 

@@ -9,6 +9,7 @@ from ...utils.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class VectorStore:
     def __init__(self, storage_path: str = "storage"):
         self.storage_path = storage_path
@@ -17,10 +18,10 @@ class VectorStore:
         self.dimension = 768  # Gemini embedding dimension
         self.index = None
         self.metadata = []
-        
+
         if not os.path.exists(storage_path):
             os.makedirs(storage_path)
-            
+
         self._initialize_index()
 
     def _initialize_index(self):
@@ -49,32 +50,26 @@ class VectorStore:
     def get_embedding(self, text: str) -> np.ndarray:
         genai.configure(api_key=settings.GEMINI_API_KEY)
         result = genai.embed_content(
-            model=settings.GEMINI_EMBEDDING_MODEL,
-            content=text,
-            task_type="retrieval_document"
+            model=settings.GEMINI_EMBEDDING_MODEL, content=text, task_type="retrieval_document"
         )
-        return np.array(result['embedding'], dtype='float32')
+        return np.array(result["embedding"], dtype="float32")
 
     def add_incident(self, incident_id: str, text: str, previous_fix: str):
         if self.index is None:
             self._create_new_index()
         embedding = self.get_embedding(text)
         self.index.add(np.expand_dims(embedding, axis=0))
-        self.metadata.append({
-            "incident_id": incident_id,
-            "text": text,
-            "previous_fix": previous_fix
-        })
+        self.metadata.append({"incident_id": incident_id, "text": text, "previous_fix": previous_fix})
         self._save_index()
         logger.info(f"[VECTOR_STORE] Added incident {incident_id}")
 
     def search_similar(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         if self.index is None or self.index.ntotal == 0:
             return []
-            
+
         query_embedding = self.get_embedding(query)
         distances, indices = self.index.search(np.expand_dims(query_embedding, axis=0), top_k)
-        
+
         results = []
         for i, idx in enumerate(indices[0]):
             if idx != -1 and idx < len(self.metadata):
@@ -82,5 +77,6 @@ class VectorStore:
                 match["similarity_score"] = float(1.0 / (1.0 + distances[0][i]))
                 results.append(match)
         return results
+
 
 vector_store = VectorStore()

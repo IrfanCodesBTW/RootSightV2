@@ -6,9 +6,9 @@ from ...schemas.hypothesis import HypothesisList
 from ...schemas.impact import Impact, SeverityBand
 from pydantic import ValidationError
 from ..llm_clients.gemini_client import generate, enforce_token_budget
-from ..llm_clients.errors import LLMClientError
 
 logger = logging.getLogger(__name__)
+
 
 async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_list: HypothesisList) -> Impact:
     """
@@ -22,13 +22,13 @@ async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_l
     )
     try:
         top_hypothesis = hypothesis_list.hypotheses[0] if hypothesis_list.hypotheses else None
-        top_3_events = [e.model_dump(mode='json') for e in event_list.events[:3]]
+        top_3_events = [e.model_dump(mode="json") for e in event_list.events[:3]]
 
         prompt = f"""
         Estimate the business and user impact of this incident.
         Service: {incident.service}
         Severity: {incident.severity}
-        Top cause: {top_hypothesis.statement if top_hypothesis else 'Unknown'} ({top_hypothesis.confidence_score if top_hypothesis else 0}% confidence)
+        Top cause: {top_hypothesis.statement if top_hypothesis else "Unknown"} ({top_hypothesis.confidence_score if top_hypothesis else 0}% confidence)
         Key events: {json.dumps(top_3_events, indent=2)}
 
         Return ONLY valid JSON:
@@ -59,15 +59,18 @@ async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_l
 
         try:
             result = Impact(**response_dict)
-            logger.info("analyze_impact.complete incident_id=%s severity_band=%s", incident.incident_id, result.severity_band)
+            logger.info(
+                "analyze_impact.complete incident_id=%s severity_band=%s", incident.incident_id, result.severity_band
+            )
             return result
         except ValidationError as e:
             logger.error(f"[IMPACT] LLM output invalid: {e}")
             return _fallback_impact(incident)
 
-    except Exception as e:
+    except Exception:
         logger.exception("analyze_impact.failed incident_id=%s", incident.incident_id)
         return _fallback_impact(incident)
+
 
 def _fallback_impact(incident: Incident) -> Impact:
     # Map incident severity to severity band
@@ -76,7 +79,7 @@ def _fallback_impact(incident: Incident) -> Impact:
         "P1": SeverityBand.CRITICAL,
         "P2": SeverityBand.HIGH,
         "P3": SeverityBand.MEDIUM,
-        "P4": SeverityBand.LOW
+        "P4": SeverityBand.LOW,
     }
     fallback = Impact(
         incident_id=incident.incident_id,
@@ -85,7 +88,9 @@ def _fallback_impact(incident: Incident) -> Impact:
         estimated_duration_minutes=None,
         probable_user_impact="Impact assessment failed. Treating as undetermined.",
         estimated_requests_affected=None,
-        business_impact_summary="System failed to automatically assess business impact."
+        business_impact_summary="System failed to automatically assess business impact.",
     )
-    logger.warning("analyze_impact.fallback incident_id=%s severity_band=%s", incident.incident_id, fallback.severity_band)
+    logger.warning(
+        "analyze_impact.fallback incident_id=%s severity_band=%s", incident.incident_id, fallback.severity_band
+    )
     return fallback

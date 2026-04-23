@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 from enum import Enum
 
+
 class EventType(str, Enum):
     DEPLOY = "deploy"
     ERROR_SPIKE = "error_spike"
@@ -18,6 +19,7 @@ class EventType(str, Enum):
     CONFIG_CHANGE = "config_change"
     UNKNOWN = "unknown"
 
+
 class Event(BaseModel):
     event_id: str = Field(min_length=1, max_length=64)
     incident_id: str = Field(min_length=1, max_length=64)
@@ -27,6 +29,7 @@ class Event(BaseModel):
     evidence_source: str = Field(min_length=1)
     confidence: int = Field(ge=0, le=100)
     raw_reference: Optional[str] = None
+
 
 class EventList(BaseModel):
     events: list[Event] = Field(default_factory=list)

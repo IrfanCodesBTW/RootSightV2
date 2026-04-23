@@ -10,6 +10,7 @@ from ...utils.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class RawEvent(BaseModel):
     timestamp: str
     level: str
@@ -46,7 +47,7 @@ async def ingest_logs(payload: dict, incident_id: str) -> Tuple[List[RawEvent], 
     creates the Incident record, and extracts normalized logs.
     """
     logger.info("ingest_logs.start incident_id=%s payload_keys=%s", incident_id, sorted(payload.keys()))
-    
+
     # 1. Create the Incident object from payload or defaults
     now = datetime.now(timezone.utc)
     incident = Incident(
@@ -60,7 +61,7 @@ async def ingest_logs(payload: dict, incident_id: str) -> Tuple[List[RawEvent], 
         description=payload.get("description"),
         started_at=payload.get("started_at") or now,
         detected_at=now,
-        status=IncidentStatus.RUNNING
+        status=IncidentStatus.RUNNING,
     )
 
     # 2. Extract logs
@@ -75,40 +76,46 @@ async def ingest_logs(payload: dict, incident_id: str) -> Tuple[List[RawEvent], 
         file_to_load = bundle_file if bundle_file else "cdn_502_incident.json"
         raw_logs = _load_bundle_logs(file_to_load)
         logger.info("[INGEST] loaded bundle_file=%s count=%d", file_to_load, len(raw_logs))
-    
+
     # 3. Filter and Normalize
     filtered_events = []
     for log in raw_logs:
         try:
             level = str(log.get("level", "INFO")).upper()
             message = str(log.get("message", ""))
-            
+
             # Simple heuristic: keep ERROR/WARN and anything mentioning "deploy"
             is_deploy = "deploy" in message.lower()
             is_high_severity = level in ["ERROR", "CRITICAL", "WARN", "WARNING", "FATAL"]
 
             if is_deploy or is_high_severity:
-                filtered_events.append(RawEvent(
-                    timestamp=str(log.get("timestamp", now.isoformat())),
-                    level=level,
-                    message=message,
-                    source=str(log.get("host", log.get("source", "unknown"))),
-                    service=str(log.get("service", incident.service))
-                ))
+                filtered_events.append(
+                    RawEvent(
+                        timestamp=str(log.get("timestamp", now.isoformat())),
+                        level=level,
+                        message=message,
+                        source=str(log.get("host", log.get("source", "unknown"))),
+                        service=str(log.get("service", incident.service)),
+                    )
+                )
         except Exception:
             continue
 
     # 4. Sort and Sample
     def priority_score(event: RawEvent) -> int:
-        if event.level in ["CRITICAL", "FATAL"]: return 0
-        if event.level == "ERROR": return 1
-        if "deploy" in event.message.lower(): return 2
-        if event.level in ["WARN", "WARNING"]: return 3
+        if event.level in ["CRITICAL", "FATAL"]:
+            return 0
+        if event.level == "ERROR":
+            return 1
+        if "deploy" in event.message.lower():
+            return 2
+        if event.level in ["WARN", "WARNING"]:
+            return 3
         return 4
 
     filtered_events.sort(key=priority_score)
-    sampled_events = filtered_events[:settings.MAX_LOG_LINES]
-    
+    sampled_events = filtered_events[: settings.MAX_LOG_LINES]
+
     # Final sort by timestamp for timeline building
     try:
         sampled_events.sort(key=lambda x: x.timestamp)
@@ -117,6 +124,8 @@ async def ingest_logs(payload: dict, incident_id: str) -> Tuple[List[RawEvent], 
 
     logger.info(
         "ingest_logs.complete incident_id=%s filtered=%s sampled=%s",
-        incident_id, len(filtered_events), len(sampled_events)
+        incident_id,
+        len(filtered_events),
+        len(sampled_events),
     )
     return sampled_events, incident

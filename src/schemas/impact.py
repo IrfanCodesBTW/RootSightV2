@@ -2,11 +2,13 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from enum import Enum
 
+
 class SeverityBand(str, Enum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
+
 
 class Impact(BaseModel):
     incident_id: str = Field(min_length=1, max_length=64)

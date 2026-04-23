@@ -1,11 +1,13 @@
 import logging
 import uuid
+import json
 from ...schemas.incident import Incident
 from ...schemas.impact import Impact
 from ...schemas.hypothesis import HypothesisList
 from ...schemas.action import ActionList, Action, ActionType, ApprovalStatus, ExecutionStatus
 from pydantic import ValidationError
 from ..llm_clients.groq_client import format_json, enforce_token_budget
+from ..llm_clients.gemini_client import generate, strip_fences
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ async def generate_actions(incident: Incident, impact: Impact, hypothesis_list: 
         
         Incident: {incident.title} ({incident.service})
         Severity: {incident.severity}
-        Impact: {impact.business_impact_summary or 'Unknown'}
+        Impact: {impact.business_impact_summary or "Unknown"}
         Top Hypothesis: {cause_statement}
 
         Draft exactly two actions:
@@ -102,12 +104,38 @@ async def generate_actions(incident: Incident, impact: Impact, hypothesis_list: 
             result = ActionList(**response_dict)
             if not result.actions:
                 return _fallback_action(incident.incident_id)
-            logger.info("generate_actions.complete incident_id=%s actions=%s", incident.incident_id, len(result.actions))
+            logger.info(
+                "generate_actions.complete incident_id=%s actions=%s", incident.incident_id, len(result.actions)
+            )
             return result
         except ValidationError as e:
             logger.error(f"[ACTIONS] LLM output invalid: {e}")
             return _fallback_action(incident.incident_id)
 
-    except Exception as e:
+    except Exception:
         logger.exception("generate_actions.failed incident_id=%s", incident.incident_id)
         return _fallback_action(incident.incident_id)
+
+
+async def draft_recovery_script_action(incident_id: str, incident_data: dict, rca_data: dict) -> str:
+    """
+    Generates a recovery bash script based on the incident state and RCA.
+    """
+    prompt = f"""
+    [SYSTEM] You are an expert SRE. Draft a safe, idempotent bash recovery script for the following incident.
+    [INCIDENT] {json.dumps(incident_data)}
+    [RCA] {json.dumps(rca_data)}
+
+    Guidelines:
+    1. Include safety checks (e.g. check if service is running).
+    2. Add comments explaining each step.
+    3. Return ONLY the bash script inside ```bash fences.
+    """
+    try:
+        raw_response = await generate(prompt)
+        script = strip_fences(raw_response)
+        return script
+    except Exception as e:
+        logger.exception("draft_recovery_script_action.failed incident_id=%s", incident_id)
+        raise e
+

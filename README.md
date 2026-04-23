@@ -15,6 +15,7 @@
 - **Automated Timeline Reconstruction**: Chronological reconstruction of events from raw logs using LLMs.
 - **Evidence-Based RCA**: Ranked hypotheses with supporting evidence and confidence scores.
 - **Memory Retrieval**: Uses FAISS for local vector storage to find similar historical incidents.
+- **Automated Recovery Scripts**: Drafts safe, idempotent bash recovery scripts based on RCA to accelerate incident mitigation.
 - **Zero-Cost AI**: Designed to operate within free-tier limits of Gemini and Groq.
 - **Operational Dashboard**: Modern, high-performance UI built with Next.js and Framer Motion.
 

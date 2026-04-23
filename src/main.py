@@ -164,7 +164,9 @@ async def upload_bundle(file: UploadFile = File(...)):
     if ext not in ALLOWED_EXTENSIONS:
         return JSONResponse(
             status_code=400,
-            content=error_response(f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}", 400),
+            content=error_response(
+                f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}", 400
+            ),
         )
 
     contents = await file.read()
@@ -194,24 +196,12 @@ async def draft_recovery_script(incident_id: str):
     if not state or not state.get("rca"):
         raise HTTPException(status_code=400, detail="RCA data is required to draft a script.")
 
-    from .features.llm_clients.gemini_client import generate, strip_fences
+    from .features.action.action_module import draft_recovery_script_action
 
-    prompt = f"""
-    [SYSTEM] You are an expert SRE. Draft a safe, idempotent bash recovery script for the following incident.
-    [INCIDENT] {json.dumps(state['incident'])}
-    [RCA] {json.dumps(state['rca'])}
-
-    Guidelines:
-    1. Include safety checks (e.g. check if service is running).
-    2. Add comments explaining each step.
-    3. Return ONLY the bash script inside ```bash fences.
-    """
     try:
-        raw_response = await generate(prompt)
-        script = strip_fences(raw_response)
+        script = await draft_recovery_script_action(incident_id, state["incident"], state["rca"])
         return success_response({"script": script})
     except Exception:
-        logger.exception("draft_recovery_script.failed incident_id=%s", incident_id)
         return JSONResponse(
             status_code=500,
             content=error_response("Failed to generate recovery script.", 500),

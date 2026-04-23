@@ -15,8 +15,8 @@ SEED_INCIDENTS = [
         "service": "cdn",
         "severity": "P1",
         "summary": "Full cache purge triggered thundering herd on origin servers. "
-                   "CPU hit 98%. Fix: staged regional purge with rate limiting.",
-        "fix_applied": "Implemented staged CDN purge with 10% rollout per region."
+        "CPU hit 98%. Fix: staged regional purge with rate limiting.",
+        "fix_applied": "Implemented staged CDN purge with 10% rollout per region.",
     },
     {
         "incident_id": "HIST-002",
@@ -24,19 +24,19 @@ SEED_INCIDENTS = [
         "service": "payment-api",
         "severity": "P1",
         "summary": "Traffic spike exhausted DB connection pool causing payment timeouts. "
-                   "Fix: raised connection pool limit and added circuit breaker.",
-        "fix_applied": "Raised max_connections 50→200. Added circuit breaker on payment service."
+        "Fix: raised connection pool limit and added circuit breaker.",
+        "fix_applied": "Raised max_connections 50→200. Added circuit breaker on payment service.",
     },
     {
         "incident_id": "HIST-003",
         "title": "DB Connection Pool Exhausted",
         "service": "user-service",
         "severity": "P2",
-        "summary": "Slow migration query held connections during deploy. "
-                   "Fix: query timeout enforced at 30s.",
-        "fix_applied": "Added statement_timeout=30000ms. Migrations now run in maintenance window."
+        "summary": "Slow migration query held connections during deploy. Fix: query timeout enforced at 30s.",
+        "fix_applied": "Added statement_timeout=30000ms. Migrations now run in maintenance window.",
     },
 ]
+
 
 async def seed_historical_incidents():
     if vector_store.index is None:
@@ -52,9 +52,7 @@ async def seed_historical_incidents():
         embed_text = f"{item['title']} {item['service']} {item['summary']}"
         try:
             vector_store.add_incident(
-                incident_id=item['incident_id'],
-                text=embed_text,
-                previous_fix=item['fix_applied']
+                incident_id=item["incident_id"], text=embed_text, previous_fix=item["fix_applied"]
             )
         except Exception as e:
             logger.error(f"[MEMORY] Seed failed for {item['incident_id']}: {e}")
@@ -91,14 +89,16 @@ async def find_similar_incidents(incident: Incident, hypothesis_list: Hypothesis
 
         for match in raw_matches:
             if not isinstance(match, dict):
-                logger.warning("find_similar_incidents.invalid_match_shape incident_id=%s match=%s", incident.incident_id, match)
+                logger.warning(
+                    "find_similar_incidents.invalid_match_shape incident_id=%s match=%s", incident.incident_id, match
+                )
                 continue
             prompt = f"""
             Compare these two incidents and explain briefly why they are similar.
             Keep it to 1 sentence.
 
             Current Incident: {incident.title} (Cause: {top_hypothesis})
-            Past Incident Text: {match['text']}
+            Past Incident Text: {match["text"]}
             
             Return ONLY valid JSON:
             {{
@@ -107,23 +107,32 @@ async def find_similar_incidents(incident: Incident, hypothesis_list: Hypothesis
             """
             try:
                 from ..llm_clients.gemini_client import enforce_token_budget
+
                 prompt = enforce_token_budget(prompt)
                 response = await generate(prompt, max_retries=2)
-                why_similar = response.get("why_similar", "Shares similar patterns.") if isinstance(response, dict) else "Shares similar patterns."
+                why_similar = (
+                    response.get("why_similar", "Shares similar patterns.")
+                    if isinstance(response, dict)
+                    else "Shares similar patterns."
+                )
             except (LLMClientError, Exception):
                 logger.exception("find_similar_incidents.explanation_failed incident_id=%s", incident.incident_id)
                 why_similar = "Shares similar patterns."
 
-            similar_incidents.append(SimilarIncident(
-                incident_id=incident.incident_id,
-                similar_to_id=match.get("incident_id", "unknown"),
-                similarity_score=match.get("similarity_score", 0.0),
-                why_similar=why_similar,
-                previous_fix=match.get("previous_fix", "No fix recorded")
-            ))
+            similar_incidents.append(
+                SimilarIncident(
+                    incident_id=incident.incident_id,
+                    similar_to_id=match.get("incident_id", "unknown"),
+                    similarity_score=match.get("similarity_score", 0.0),
+                    why_similar=why_similar,
+                    previous_fix=match.get("previous_fix", "No fix recorded"),
+                )
+            )
 
         result = SimilarIncidentList(matches=similar_incidents)
-        logger.info("find_similar_incidents.complete incident_id=%s matches=%s", incident.incident_id, len(result.matches))
+        logger.info(
+            "find_similar_incidents.complete incident_id=%s matches=%s", incident.incident_id, len(result.matches)
+        )
         return result
 
     except Exception:

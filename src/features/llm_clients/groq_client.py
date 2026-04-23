@@ -6,7 +6,6 @@ from typing import Optional
 
 from groq import Groq
 
-from .errors import LLMClientError
 from ...utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ async def format_json(prompt: str, max_retries: int = 3) -> Optional[dict]:
                 messages=[{"role": "user", "content": prompt}],
                 model=settings.GROQ_MODEL,
                 temperature=0.1,
-                max_tokens=1024
+                max_tokens=1024,
             )
             choices = getattr(response, "choices", [])
             if not choices:
@@ -60,11 +59,11 @@ async def format_json(prompt: str, max_retries: int = 3) -> Optional[dict]:
             if attempt == max_retries - 1:
                 logger.error("groq_client.exhausted_retries returning None")
                 return None
-            await asyncio.sleep(2 ** attempt)
+            await asyncio.sleep(2**attempt)
         except Exception as e:
             logger.warning("groq_client.request_failed attempt=%s/%s error=%s", attempt + 1, max_retries, e)
             if attempt == max_retries - 1:
                 logger.error("groq_client.exhausted_retries returning None")
                 return None
-            await asyncio.sleep(2 ** attempt)
+            await asyncio.sleep(2**attempt)
     return None

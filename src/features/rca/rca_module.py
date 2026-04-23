@@ -6,7 +6,6 @@ from ...schemas.event import EventList
 from ...schemas.hypothesis import HypothesisList, Hypothesis
 from pydantic import ValidationError
 from ..llm_clients.gemini_client import generate, enforce_token_budget
-from ..llm_clients.errors import LLMClientError
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +73,14 @@ async def analyze_root_cause(event_list: EventList, incident: Incident) -> Hypot
         try:
             result = HypothesisList(**response_dict)
             result.hypotheses.sort(key=lambda h: h.rank)
-            
+
             # Post-validation low confidence check
             if result.hypotheses and result.hypotheses[0].confidence_score < 30:
                 result.is_low_confidence = True
 
-            logger.info("analyze_root_cause.complete incident_id=%s hypotheses=%s", incident.incident_id, len(result.hypotheses))
+            logger.info(
+                "analyze_root_cause.complete incident_id=%s hypotheses=%s", incident.incident_id, len(result.hypotheses)
+            )
             return result
         except ValidationError as e:
             logger.error(f"[RCA] LLM output invalid: {e}")

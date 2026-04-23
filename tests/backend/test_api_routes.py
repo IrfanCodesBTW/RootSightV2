@@ -31,9 +31,21 @@ def test_trigger_route_rejects_empty_payload_with_consistent_error():
 def test_get_incident_route_returns_envelope():
     sample_state = {
         "incident_id": "abc123",
-        "incident": {"incident_id": "abc123", "title": "Test", "service": "svc", "severity": "P1", "started_at": "2024-05-10T14:00:00Z"},
+        "incident": {
+            "incident_id": "abc123",
+            "title": "Test",
+            "service": "svc",
+            "severity": "P1",
+            "started_at": "2024-05-10T14:00:00Z",
+        },
         "status": "completed",
-        "timeline": {"events": [], "timeline_confidence": 0, "gaps_detected": 0, "total_events": 0, "analysis_note": None},
+        "timeline": {
+            "events": [],
+            "timeline_confidence": 0,
+            "gaps_detected": 0,
+            "total_events": 0,
+            "analysis_note": None,
+        },
         "rca": None,
         "impact": None,
         "memory": None,

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 class Hypothesis(BaseModel):
     hypothesis_id: str = Field(min_length=1, max_length=64)
     incident_id: str = Field(min_length=1, max_length=64)
@@ -11,6 +12,7 @@ class Hypothesis(BaseModel):
     contradicting_evidence: list[str] = Field(default_factory=list)
     missing_information: list[str] = Field(default_factory=list)
     recommended_check: Optional[str] = None
+
 
 class HypothesisList(BaseModel):
     hypotheses: list[Hypothesis] = Field(default_factory=list)

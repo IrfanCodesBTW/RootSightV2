@@ -37,3 +37,4 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = ["pytest-cache-files-*", ".pytest_cache", ".venv", ".next", "node_modules"]
 addopts = "-p no:cacheprovider"
+pythonpath = ["."]
