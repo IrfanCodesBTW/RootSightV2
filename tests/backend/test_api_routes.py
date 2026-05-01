@@ -92,3 +92,48 @@ def test_health_endpoint():
     assert body["success"] is True
     assert body["data"]["status"] == "ok"
     assert body["data"]["version"] == "3.0.0"
+
+
+def test_patch_incident_outcome_returns_envelope():
+    outcome = {
+        "correct_hypothesis_id": "H2",
+        "resolution_notes": "Raised pool limit and restarted workers.",
+        "mttr_minutes": 47,
+        "root_cause": "DB pool exhaustion",
+    }
+
+    with patch("src.main.update_incident_outcome", return_value=outcome) as mock_update:
+        response = client.patch(
+            "/api/incidents/abc123/outcome",
+            json={
+                "correct_hypothesis_id": "H2",
+                "resolution_notes": "Raised pool limit and restarted workers.",
+                "mttr_minutes": 47,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"] == outcome
+    assert body["error"] is None
+    mock_update.assert_called_once_with(
+        incident_id="abc123",
+        correct_hypothesis_id="H2",
+        resolution_notes="Raised pool limit and restarted workers.",
+        mttr_minutes=47,
+    )
+
+
+def test_patch_incident_outcome_returns_not_found_envelope():
+    with patch("src.main.update_incident_outcome", return_value=None):
+        response = client.patch(
+            "/api/incidents/missing/outcome",
+            json={"correct_hypothesis_id": "H1", "resolution_notes": "Fixed.", "mttr_minutes": 5},
+        )
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["success"] is False
+    assert body["data"] is None
+    assert body["error"] == "Incident not found"

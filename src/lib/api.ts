@@ -4,6 +4,8 @@ import type {
   TriggerPipelineResponse,
   ListIncidentsResponse,
   ApiResponse,
+  IncidentOutcome,
+  IncidentOutcomeRequest,
 } from "@/types";
 import { generateMockIncident } from "./mock-data";
 
@@ -172,6 +174,30 @@ class RootSightAPI {
       `${this.baseUrl}/api/incident/${incidentId}/draft-script`,
       { method: "POST" }
     );
+    return res.data ?? null;
+  }
+
+  /** Submit post-incident outcome feedback */
+  async updateIncidentOutcome(
+    incidentId: string,
+    req: IncidentOutcomeRequest
+  ): Promise<IncidentOutcome | null> {
+    if (isDemoMode()) {
+      return {
+        correct_hypothesis_id: req.correct_hypothesis_id ?? null,
+        resolution_notes: req.resolution_notes,
+        mttr_minutes: req.mttr_minutes ?? null,
+        root_cause: null,
+      };
+    }
+
+    const res = await fetchJson<IncidentOutcome>(
+      `${this.baseUrl}/api/incidents/${incidentId}/outcome`,
+      { method: "PATCH", body: JSON.stringify(req) }
+    );
+    if (!res.success) {
+      throw new Error(res.error ?? "Failed to submit incident outcome");
+    }
     return res.data ?? null;
   }
 }

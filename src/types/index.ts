@@ -114,6 +114,12 @@ export interface SimilarIncident {
   similarity_score: number;
   why_similar: string;
   previous_fix: string;
+  embedding_similarity?: number;
+  resolution_confirmed?: boolean;
+  correct_hypothesis_id?: string | null;
+  root_cause?: string | null;
+  resolution_notes?: string | null;
+  mttr_minutes?: number | null;
 }
 
 /** Remediation action — matches schemas/action.py → Action */
@@ -167,6 +173,7 @@ export interface Incident {
   actions: {
     actions: Action[];
   } | null;
+  outcome?: IncidentOutcome | null;
   error?: string | null;
   started_at?: string;
   completed_at?: string | null;
@@ -210,6 +217,19 @@ export interface DraftRecoveryScriptResponse {
   success: boolean;
   data: { script: string } | null;
   error: string | null;
+}
+
+export interface IncidentOutcome {
+  correct_hypothesis_id?: string | null;
+  resolution_notes: string;
+  mttr_minutes?: number | null;
+  root_cause?: string | null;
+}
+
+export interface IncidentOutcomeRequest {
+  correct_hypothesis_id?: string | null;
+  resolution_notes: string;
+  mttr_minutes?: number | null;
 }
 
 // ── API Envelope ────────────────────────────────────────────────────────────────

@@ -7,6 +7,12 @@ class SimilarIncident(BaseModel):
     similarity_score: float = Field(ge=0.0, le=1.0)
     why_similar: str = Field(min_length=1)
     previous_fix: str = Field(min_length=1)
+    embedding_similarity: float = Field(default=0.0, ge=0.0, le=1.0)
+    resolution_confirmed: bool = False
+    correct_hypothesis_id: str | None = None
+    root_cause: str | None = None
+    resolution_notes: str | None = None
+    mttr_minutes: int | None = None
 
 
 class SimilarIncidentList(BaseModel):

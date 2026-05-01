@@ -57,7 +57,18 @@ async def test_find_similar_incidents(mock_generate, mock_vs, sample_incident, s
     mock_vs.index = MagicMock()
     mock_vs.index.ntotal = 1
     mock_vs.search_similar.return_value = [
-        {"incident_id": "old-1", "similarity_score": 0.8, "text": "Old DB timeout", "previous_fix": "Restarted DB"}
+        {
+            "incident_id": "old-1",
+            "similarity_score": 0.86,
+            "embedding_similarity": 0.8,
+            "resolution_confirmed": True,
+            "correct_hypothesis_id": "H1",
+            "root_cause": "DB Timeout",
+            "resolution_notes": "Restarted DB",
+            "mttr_minutes": 47,
+            "text": "Old DB timeout",
+            "previous_fix": "Restarted DB",
+        }
     ]
     mock_generate.return_value = {"why_similar": "Both involve DB timeouts"}
 
@@ -65,6 +76,10 @@ async def test_find_similar_incidents(mock_generate, mock_vs, sample_incident, s
     assert len(result.matches) == 1
     assert result.matches[0].similar_to_id == "old-1"
     assert result.matches[0].why_similar == "Both involve DB timeouts"
+    assert result.matches[0].similarity_score == 0.86
+    assert result.matches[0].resolution_confirmed is True
+    assert result.matches[0].resolution_notes == "Restarted DB"
+    assert result.matches[0].mttr_minutes == 47
 
 
 @pytest.mark.asyncio

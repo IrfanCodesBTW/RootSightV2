@@ -205,6 +205,58 @@ def get_pipeline_state(incident_id: str) -> Optional[dict]:
     return _pipeline_states.get(incident_id)
 
 
+def update_incident_outcome(
+    incident_id: str,
+    correct_hypothesis_id: str | None,
+    resolution_notes: str,
+    mttr_minutes: int | None,
+) -> Optional[dict]:
+    """Attach operator feedback to an incident and re-index it as resolved memory."""
+    from ..memory.vector_store import vector_store
+
+    state = _pipeline_states.get(incident_id)
+    if not state:
+        return None
+
+    hypotheses = (state.get("rca") or {}).get("hypotheses") or []
+    correct_hypothesis = next(
+        (hypothesis for hypothesis in hypotheses if hypothesis.get("id") == correct_hypothesis_id),
+        None,
+    )
+    root_cause = correct_hypothesis.get("text") if correct_hypothesis else None
+
+    outcome = {
+        "correct_hypothesis_id": correct_hypothesis_id,
+        "resolution_notes": resolution_notes,
+        "mttr_minutes": mttr_minutes,
+        "root_cause": root_cause,
+    }
+    state["outcome"] = outcome
+
+    incident = state.get("incident") or {}
+    incident_text = " ".join(
+        str(value)
+        for value in [
+            incident.get("title"),
+            incident.get("service"),
+            incident.get("severity"),
+            incident.get("description"),
+        ]
+        if value
+    )
+    previous_fix = resolution_notes or "Resolution recorded"
+    vector_store.upsert_resolved_incident(
+        incident_id=incident_id,
+        text=incident_text or incident_id,
+        previous_fix=previous_fix,
+        correct_hypothesis_id=correct_hypothesis_id,
+        root_cause=root_cause,
+        resolution_notes=resolution_notes,
+        mttr_minutes=mttr_minutes,
+    )
+    return outcome
+
+
 def get_all_incidents(page: int = 1, limit: int = 20) -> dict:
     """Return paginated incident list from in-memory state."""
     all_items = list(_pipeline_states.values())

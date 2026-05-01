@@ -133,6 +133,12 @@ function makeMockSimilarIncidents(incidentId: string): SimilarIncident[] {
       similarity_score: 0.89,
       why_similar: "Both involve CDN cache purge causing thundering herd on origin servers",
       previous_fix: "Implemented staged CDN purge with 10% rollout per region",
+      embedding_similarity: 0.84,
+      resolution_confirmed: true,
+      correct_hypothesis_id: "H1",
+      root_cause: "Cache purge triggered thundering herd on origin",
+      resolution_notes: "Rolled out staged purge and rate limited origin requests.",
+      mttr_minutes: 47,
     },
     {
       incident_id: incidentId,

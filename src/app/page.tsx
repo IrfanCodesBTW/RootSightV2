@@ -6,9 +6,10 @@ import { api } from "@/lib/api";
 import { Incident, ListIncidentsResponse, IncidentStatus, PipelineStepStatus, Severity } from "@/types";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { 
-  Zap, AlertTriangle, CheckCircle2, Clock, 
+  AlertTriangle, CheckCircle2,
   ArrowRight, RefreshCw, BarChart3, Activity 
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import SeverityIndicator from "@/components/shared/SeverityIndicator";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -49,9 +50,12 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchIncidents();
+    const initialFetch = setTimeout(fetchIncidents, 0);
     const interval = setInterval(fetchIncidents, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
   }, [fetchIncidents]);
 
   return (
@@ -176,7 +180,7 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: string | number; icon: any; color: string }) {
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: string | number; icon: LucideIcon; color: string }) {
   const colors: Record<string, string> = {
     blue: "text-blue-400 border-blue-500/20 bg-blue-500/5",
     red: "text-red-400 border-red-500/20 bg-red-500/5",

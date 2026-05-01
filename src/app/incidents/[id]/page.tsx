@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Incident, PipelineState, PIPELINE_STEPS, IncidentStatus, PipelineStepStatus, Severity, Hypothesis, Event } from "@/types";
-import type { Hypothesis as HypothesisType } from "@/types";
+import { Incident, PipelineState, PIPELINE_STEPS, IncidentStatus, PipelineStepStatus, Severity, Event } from "@/types";
+import type { Action, Hypothesis as HypothesisType, IncidentOutcome } from "@/types";
 import {
   formatRelativeTime,
   formatAbsoluteTime,
@@ -14,13 +14,13 @@ import {
 import {
   ArrowLeft, Clock, Search, AlertTriangle, Database, Zap,
   Download, CheckCircle2, XCircle, Loader2, Copy, Send,
-  Check, ExternalLink, ChevronDown, ChevronUp, LinkIcon,
+  Check, ChevronDown, ChevronUp, LinkIcon, MinusCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import ConfidenceBar from "@/components/shared/ConfidenceBar";
-import SeverityIndicator from "@/components/shared/SeverityIndicator";
 import { StatusBadge } from "@/components/StatusBadge";
 
-const STEP_ICONS: Record<string, any> = {
+const STEP_ICONS: Record<string, LucideIcon> = {
   ingestion: Download, timeline: Clock, rca: Search,
   impact: AlertTriangle, memory: Database, actions: Zap,
 };
@@ -48,7 +48,7 @@ export default function IncidentDetailPage() {
   const [loading, setLoading] = useState(true);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchIncident = async () => {
+  const fetchIncident = useCallback(async () => {
     try {
       const res = await api.getIncident(incidentId);
       setIncident(res);
@@ -57,16 +57,19 @@ export default function IncidentDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [incidentId]);
 
   useEffect(() => {
-    fetchIncident();
+    const initialFetch = setTimeout(fetchIncident, 0);
     const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
     if (!demoMode) {
       pollRef.current = setInterval(fetchIncident, 3000);
     }
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [incidentId]);
+    return () => {
+      clearTimeout(initialFetch);
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchIncident]);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -115,7 +118,7 @@ export default function IncidentDetailPage() {
           </div>
           <div className="flex gap-8 lg:border-l lg:border-white/[0.07] lg:pl-6">
             {[
-              { label: "Duration", val: incident.started_at && incident.completed_at ? getIncidentDuration({ started_at: incident.started_at, completed_at: incident.completed_at } as any) : "Ongoing" },
+              { label: "Duration", val: incident.started_at && incident.completed_at ? getIncidentDuration({ created_at: incident.started_at, resolved_at: incident.completed_at }) : "Ongoing" },
               { label: "Created", val: formatRelativeTime(incident.started_at || new Date().toISOString()) },
               { label: "Pipeline", val: `${progressPct}%` },
             ].map(({ label, val }) => (
@@ -227,6 +230,15 @@ export default function IncidentDetailPage() {
           </Panel>
         )}
 
+        {incident.rca && incident.rca.hypotheses?.length > 0 && (
+          <PostIncidentFeedbackCard
+            incidentId={incident.incident_id}
+            hypotheses={incident.rca.hypotheses}
+            outcome={incident.outcome}
+            onSubmitted={(outcome) => setIncident((current) => current ? { ...current, outcome } : current)}
+          />
+        )}
+
         {/* Impact */}
         {incident.impact && (
           <Panel title="Impact Analysis" accent="red">
@@ -283,6 +295,12 @@ export default function IncidentDetailPage() {
                     <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                     <span>{s.previous_fix}</span>
                   </div>
+                  {s.resolution_confirmed && (
+                    <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-[12px] text-emerald-300">
+                      Resolved in {s.mttr_minutes ?? "unknown"} min &middot; Root cause: {s.root_cause ?? "Recorded outcome"} &middot; Confirmed &#10003;
+                      {s.resolution_notes && <p className="mt-1 text-emerald-200/70">{s.resolution_notes}</p>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -343,6 +361,173 @@ function ImpactRow({ label, text }: { label: string; text: string }) {
       <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">{label}</div>
       <p className="text-sm text-gray-300 leading-relaxed">{text}</p>
     </div>
+  );
+}
+
+function PostIncidentFeedbackCard({
+  incidentId,
+  hypotheses,
+  outcome,
+  onSubmitted,
+}: {
+  incidentId: string;
+  hypotheses: HypothesisType[];
+  outcome?: IncidentOutcome | null;
+  onSubmitted: (outcome: IncidentOutcome) => void;
+}) {
+  const [accuracy, setAccuracy] = useState<"yes" | "partial" | "no" | null>(
+    outcome?.correct_hypothesis_id ? "yes" : null
+  );
+  const [selectedHypothesisId, setSelectedHypothesisId] = useState(
+    outcome?.correct_hypothesis_id ?? hypotheses[0]?.id ?? ""
+  );
+  const [resolutionNotes, setResolutionNotes] = useState(outcome?.resolution_notes ?? "");
+  const [mttrMinutes, setMttrMinutes] = useState(outcome?.mttr_minutes?.toString() ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(outcome ? "Outcome recorded." : null);
+
+  const selectedHypothesis = hypotheses.find((hypothesis) => hypothesis.id === selectedHypothesisId);
+  const canSubmit =
+    accuracy &&
+    (accuracy === "no" ? resolutionNotes.trim().length > 0 : selectedHypothesisId && resolutionNotes.trim().length > 0);
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const saved = await api.updateIncidentOutcome(incidentId, {
+        correct_hypothesis_id: accuracy === "no" ? null : selectedHypothesisId,
+        resolution_notes: resolutionNotes.trim(),
+        mttr_minutes: mttrMinutes ? Number(mttrMinutes) : null,
+      });
+      if (saved) {
+        onSubmitted(saved);
+        setMessage("Outcome recorded.");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to submit outcome.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="lg:col-span-2">
+      <Panel title="Post-Incident Feedback" accent="green" badge={message ?? undefined}>
+        <div className="space-y-4">
+          <div>
+            <div className="text-sm font-semibold mb-3">Was this RCA accurate?</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <FeedbackChoice
+                active={accuracy === "yes"}
+                icon={<CheckCircle2 className="w-4 h-4" />}
+                label={`Yes, ${hypotheses[0]?.id ?? "H1"} was correct`}
+                onClick={() => {
+                  setAccuracy("yes");
+                  setSelectedHypothesisId(hypotheses[0]?.id ?? "");
+                }}
+              />
+              <FeedbackChoice
+                active={accuracy === "partial"}
+                icon={<MinusCircle className="w-4 h-4" />}
+                label="Partially"
+                onClick={() => setAccuracy("partial")}
+              />
+              <FeedbackChoice
+                active={accuracy === "no"}
+                icon={<XCircle className="w-4 h-4" />}
+                label="No"
+                onClick={() => setAccuracy("no")}
+              />
+            </div>
+          </div>
+
+          {(accuracy === "yes" || accuracy === "partial") && (
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 block">
+                Correct Hypothesis
+              </label>
+              <select
+                value={selectedHypothesisId}
+                onChange={(event) => setSelectedHypothesisId(event.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-gray-200 outline-none focus:border-emerald-500/50"
+              >
+                {hypotheses.map((hypothesis) => (
+                  <option key={hypothesis.id} value={hypothesis.id} className="bg-[#0f0f18] text-gray-200">
+                    {hypothesis.id}: {hypothesis.text}
+                  </option>
+                ))}
+              </select>
+              {selectedHypothesis && (
+                <p className="mt-2 text-xs text-gray-500">Selected root cause: {selectedHypothesis.text}</p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 block">
+              {accuracy === "no" ? "What actually caused it?" : "Resolution Notes"}
+            </label>
+            <textarea
+              value={resolutionNotes}
+              onChange={(event) => setResolutionNotes(event.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-gray-200 outline-none focus:border-emerald-500/50"
+              placeholder={accuracy === "no" ? "Describe the actual root cause and fix." : "Capture what fixed the incident."}
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <div className="sm:w-44">
+              <label className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 block">MTTR Minutes</label>
+              <input
+                type="number"
+                min="0"
+                value={mttrMinutes}
+                onChange={(event) => setMttrMinutes(event.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-gray-200 outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            <button
+              onClick={submit}
+              disabled={!canSubmit || submitting}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Submit
+            </button>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function FeedbackChoice({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
+        active
+          ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+          : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:bg-white/[0.06] hover:text-gray-200"
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -433,7 +618,7 @@ function HypothesisCard({ hypothesis: h, index, events }: { hypothesis: Hypothes
   );
 }
 
-function ActionCard({ action }: { action: any }) {
+function ActionCard({ action }: { action: Action }) {
   const [approval, setApproval] = useState(action.approval_status);
   const [copied, setCopied] = useState(false);
   const typeIcons: Record<string, string> = { slack_responder: "💬", jira_ticket: "📋", manual_review: "📝" };

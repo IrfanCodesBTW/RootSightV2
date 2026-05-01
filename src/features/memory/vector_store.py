@@ -56,6 +56,12 @@ class VectorStore:
         except Exception as e:
             logger.error("[VECTOR_STORE] Failed to save index: %s", e)
 
+    def _rebuild_index(self):
+        self.index = faiss.IndexFlatL2(self.dimension)
+        for item in self.metadata:
+            embedding = self.get_embedding(item["text"])
+            self.index.add(np.expand_dims(embedding, axis=0))
+
     def get_embedding(self, text: str) -> np.ndarray:
         """Generate embedding with token budget enforcement."""
         text = enforce_token_budget(text, max_tokens=2000)
@@ -65,29 +71,68 @@ class VectorStore:
         )
         return np.array(result["embedding"], dtype="float32")
 
-    def add_incident(self, incident_id: str, text: str, previous_fix: str):
+    def add_incident(self, incident_id: str, text: str, previous_fix: str, **metadata):
         if self.index is None:
             self._create_new_index()
         embedding = self.get_embedding(text)
         self.index.add(np.expand_dims(embedding, axis=0))
-        self.metadata.append({"incident_id": incident_id, "text": text, "previous_fix": previous_fix})
+        self.metadata.append({"incident_id": incident_id, "text": text, "previous_fix": previous_fix, **metadata})
         self._save_index()
         logger.info("[VECTOR_STORE] Added incident %s, total=%d", incident_id, self.index.ntotal)
+
+    def upsert_resolved_incident(
+        self,
+        incident_id: str,
+        text: str,
+        previous_fix: str,
+        correct_hypothesis_id: str | None = None,
+        root_cause: str | None = None,
+        resolution_notes: str | None = None,
+        mttr_minutes: int | None = None,
+    ):
+        resolved_text = f"{text} | resolved_by: {root_cause}" if root_cause else text
+        resolved_metadata = {
+            "incident_id": incident_id,
+            "text": resolved_text,
+            "previous_fix": previous_fix,
+            "correct_hypothesis_id": correct_hypothesis_id,
+            "root_cause": root_cause,
+            "resolution_notes": resolution_notes,
+            "mttr_minutes": mttr_minutes,
+        }
+
+        existing_idx = next(
+            (idx for idx, item in enumerate(self.metadata) if item.get("incident_id") == incident_id),
+            None,
+        )
+        if existing_idx is None:
+            self.add_incident(**resolved_metadata)
+            return
+
+        self.metadata[existing_idx] = resolved_metadata
+        self._rebuild_index()
+        self._save_index()
+        logger.info("[VECTOR_STORE] Updated resolved incident %s", incident_id)
 
     def search_similar(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         if self.index is None or self.index.ntotal == 0:
             return []
 
         query_embedding = self.get_embedding(query)
-        distances, indices = self.index.search(np.expand_dims(query_embedding, axis=0), top_k)
+        candidate_count = min(max(top_k * 4, top_k), self.index.ntotal)
+        distances, indices = self.index.search(np.expand_dims(query_embedding, axis=0), candidate_count)
 
         results = []
         for i, idx in enumerate(indices[0]):
             if idx != -1 and idx < len(self.metadata):
                 match = self.metadata[idx].copy()
-                match["similarity_score"] = float(1.0 / (1.0 + distances[0][i]))
+                embedding_similarity = float(1.0 / (1.0 + distances[0][i]))
+                resolution_confirmed = 1.0 if match.get("correct_hypothesis_id") else 0.0
+                match["embedding_similarity"] = embedding_similarity
+                match["resolution_confirmed"] = bool(resolution_confirmed)
+                match["similarity_score"] = (0.7 * embedding_similarity) + (0.3 * resolution_confirmed)
                 results.append(match)
-        return results
+        return sorted(results, key=lambda item: item.get("similarity_score", 0.0), reverse=True)[:top_k]
 
 
 vector_store = VectorStore()

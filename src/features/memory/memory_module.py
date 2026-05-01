@@ -129,6 +129,12 @@ async def find_similar_incidents(incident: Incident, hypothesis_list: Hypothesis
                     similarity_score=match.get("similarity_score", 0.0),
                     why_similar=why_similar,
                     previous_fix=match.get("previous_fix", "No fix recorded"),
+                    embedding_similarity=match.get("embedding_similarity", match.get("similarity_score", 0.0)),
+                    resolution_confirmed=match.get("resolution_confirmed", False),
+                    correct_hypothesis_id=match.get("correct_hypothesis_id"),
+                    root_cause=match.get("root_cause"),
+                    resolution_notes=match.get("resolution_notes"),
+                    mttr_minutes=match.get("mttr_minutes"),
                 )
             )
 

@@ -17,7 +17,9 @@ from .features.orchestrator.pipeline_orchestrator import (
     get_all_incidents,
     get_pipeline_state,
     start_pipeline,
+    update_incident_outcome,
 )
+from .schemas.incident import IncidentOutcomeUpdate
 from .utils.api_response import error_response, success_response
 from .utils.config import settings
 from .utils.database import create_db_and_tables
@@ -279,6 +281,29 @@ async def draft_recovery_script(incident_id: str):
             status_code=500,
             content=error_response("Failed to generate recovery script.", 500),
         )
+
+
+@app.patch("/incidents/{incident_id}/outcome")
+@app.patch("/api/incidents/{incident_id}/outcome")
+async def patch_incident_outcome(incident_id: str, payload: IncidentOutcomeUpdate):
+    if not incident_id:
+        raise HTTPException(status_code=422, detail="Incident ID is required.")
+
+    try:
+        outcome = update_incident_outcome(
+            incident_id=incident_id,
+            correct_hypothesis_id=payload.correct_hypothesis_id,
+            resolution_notes=payload.resolution_notes,
+            mttr_minutes=payload.mttr_minutes,
+        )
+    except Exception:
+        logger.exception("patch_incident_outcome.failed incident_id=%s", incident_id)
+        raise HTTPException(status_code=500, detail="Failed to update incident outcome.")
+
+    if outcome is None:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    return success_response(outcome)
 
 
 @app.get("/incidents")
