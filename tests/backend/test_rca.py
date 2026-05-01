@@ -34,11 +34,29 @@ def sample_event_list():
                 description="Origin timeout",
                 evidence_source="host-1",
                 confidence=90,
+            ),
+            Event(
+                event_id="evt-2",
+                incident_id="test-123",
+                timestamp=datetime.utcnow(),
+                event_type=EventType.TIMEOUT,
+                description="Origin timeout 2",
+                evidence_source="host-1",
+                confidence=90,
+            ),
+            Event(
+                event_id="evt-3",
+                incident_id="test-123",
+                timestamp=datetime.utcnow(),
+                event_type=EventType.TIMEOUT,
+                description="Origin timeout 3",
+                evidence_source="host-1",
+                confidence=90,
             )
         ],
         timeline_confidence=85,
         gaps_detected=0,
-        total_events=1,
+        total_events=3,
     )
 
 
@@ -46,9 +64,8 @@ def sample_event_list():
 async def test_analyze_root_cause_empty(sample_incident):
     empty_list = EventList(events=[], timeline_confidence=0, gaps_detected=0, total_events=0)
     result = await analyze_root_cause(empty_list, sample_incident)
-    assert len(result.hypotheses) == 1
-    assert "Manual investigation required" in result.hypotheses[0].statement
-    assert result.is_low_confidence is True
+    assert len(result.hypotheses) == 0
+    assert result.insufficient_data is True
 
 
 @pytest.mark.asyncio
@@ -57,24 +74,22 @@ async def test_analyze_root_cause_success(mock_generate, sample_event_list, samp
     mock_generate.return_value = {
         "hypotheses": [
             {
-                "rank": 1,
-                "statement": "Service timeout due to load",
-                "confidence_score": 85,
-                "supporting_evidence": ["timeout log"],
-                "contradicting_evidence": [],
-                "missing_information": [],
-                "recommended_check": "Check CPU",
+                "id": "H1",
+                "text": "Service timeout due to load",
+                "supporting_event_ids": ["evt-1"],
+                "evidence_strength": "weak",
+                "confidence": "high",
+                "category": "infrastructure",
+                "recommended_action_hint": "Check CPU",
             }
         ],
-        "analysis_confidence": 80,
-        "is_low_confidence": False,
+        "insufficient_data": False,
     }
 
     result = await analyze_root_cause(sample_event_list, sample_incident)
     assert len(result.hypotheses) == 1
-    assert result.hypotheses[0].confidence_score == 85
-    assert result.is_low_confidence is False
-    assert result.analysis_confidence == 80
+    assert result.hypotheses[0].confidence == "high"
+    assert result.insufficient_data is False
 
 
 @pytest.mark.asyncio
@@ -83,6 +98,5 @@ async def test_analyze_root_cause_failure_returns_fallback(mock_generate, sample
     mock_generate.side_effect = RuntimeError("gemini offline")
 
     result = await analyze_root_cause(sample_event_list, sample_incident)
-    assert len(result.hypotheses) == 1
-    assert result.hypotheses[0].statement == "Manual investigation required"
-    assert result.is_low_confidence is True
+    assert len(result.hypotheses) == 0
+    assert result.insufficient_data is True

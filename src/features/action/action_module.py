@@ -43,7 +43,7 @@ async def generate_actions(incident: Incident, impact: Impact, hypothesis_list: 
     )
     try:
         top_hypothesis = hypothesis_list.hypotheses[0] if hypothesis_list.hypotheses else None
-        cause_statement = top_hypothesis.statement if top_hypothesis else "Unknown cause"
+        cause_statement = top_hypothesis.text if top_hypothesis else "Unknown cause"
 
         prompt = f"""
         You are an expert SRE automation bot.

@@ -86,16 +86,13 @@ export interface Event {
 
 /** Root cause hypothesis — matches schemas/hypothesis.py → Hypothesis */
 export interface Hypothesis {
-  hypothesis_id: string;
-  incident_id: string;
-  rank: number;
-  statement: string;
-  confidence_score: number;
-  supporting_evidence: string[];
-  contradicting_evidence: string[];
-  missing_information: string[];
-  recommended_check?: string;
-  severity_band?: string | null;
+  id: string;
+  text: string;
+  supporting_event_ids: string[];
+  evidence_strength: "strong" | "moderate" | "weak";
+  confidence: "low" | "medium" | "high";
+  category: "infrastructure" | "application" | "dependency" | "configuration";
+  recommended_action_hint: string;
 }
 
 /** Impact assessment — matches schemas/impact.py → Impact */
@@ -161,9 +158,7 @@ export interface Incident {
   } | null;
   rca: {
     hypotheses: Hypothesis[];
-    analysis_confidence: number;
-    is_low_confidence: boolean;
-    analysis_note?: string | null;
+    insufficient_data: boolean;
   } | null;
   impact: Impact | null;
   memory: {

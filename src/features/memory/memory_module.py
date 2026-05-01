@@ -79,7 +79,7 @@ async def find_similar_incidents(incident: Incident, hypothesis_list: Hypothesis
         return SimilarIncidentList(matches=[])
 
     try:
-        top_hypothesis = hypothesis_list.hypotheses[0].statement if hypothesis_list.hypotheses else "Unknown cause"
+        top_hypothesis = hypothesis_list.hypotheses[0].text if hypothesis_list.hypotheses else "Unknown cause"
         search_query = f"{incident.title} {incident.service} {top_hypothesis}"
 
         raw_matches = vector_store.search_similar(search_query, top_k=3)

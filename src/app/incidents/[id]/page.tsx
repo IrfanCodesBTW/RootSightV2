@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Incident, PipelineState, PIPELINE_STEPS, IncidentStatus, PipelineStepStatus, Severity } from "@/types";
+import { Incident, PipelineState, PIPELINE_STEPS, IncidentStatus, PipelineStepStatus, Severity, Hypothesis, Event } from "@/types";
+import type { Hypothesis as HypothesisType } from "@/types";
 import {
   formatRelativeTime,
   formatAbsoluteTime,
@@ -13,7 +14,7 @@ import {
 import {
   ArrowLeft, Clock, Search, AlertTriangle, Database, Zap,
   Download, CheckCircle2, XCircle, Loader2, Copy, Send,
-  Check, ExternalLink,
+  Check, ExternalLink, ChevronDown, ChevronUp, LinkIcon,
 } from "lucide-react";
 import ConfidenceBar from "@/components/shared/ConfidenceBar";
 import SeverityIndicator from "@/components/shared/SeverityIndicator";
@@ -204,48 +205,25 @@ export default function IncidentDetailPage() {
         )}
 
         {/* RCA Hypotheses */}
-        {incident.rca && incident.rca.hypotheses && incident.rca.hypotheses.length > 0 && (
-          <Panel title="RCA Hypotheses" accent="purple" badge={`${incident.rca.hypotheses.length} hypotheses`}>
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {[...incident.rca.hypotheses].sort((a, b) => a.rank - b.rank).map((h) => (
-                <div key={h.hypothesis_id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-colors">
-                  <div className="flex items-start gap-3 mb-2">
-                    <span className={cn("w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold font-mono flex-shrink-0 mt-0.5",
-                      h.rank === 1 ? "bg-amber-500/20 text-amber-400" : "bg-white/[0.06] text-gray-500")}>
-                      #{h.rank}
-                    </span>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="font-semibold text-sm">{h.statement}</span>
-                        <span className={cn("font-mono text-[11px] font-bold px-2 py-0.5 rounded-md flex-shrink-0",
-                          h.confidence_score >= 75 ? "bg-emerald-500/15 text-emerald-400" :
-                          h.confidence_score >= 50 ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"
-                        )}>{h.confidence_score}%</span>
-                      </div>
-                      <p className="text-xs text-gray-400 leading-relaxed">{h.recommended_check ?? ""}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {h.supporting_evidence && h.supporting_evidence.length > 0 && (
-                      <div>
-                        <div className="text-[10px] uppercase tracking-widest text-emerald-500 font-semibold mb-1">Supporting</div>
-                        {h.supporting_evidence.map((e, i) => (
-                          <div key={i} className="text-[11px] text-gray-400 pl-3 border-l-2 border-emerald-500/40 mb-1">{e}</div>
-                        ))}
-                      </div>
-                    )}
-                    {h.contradicting_evidence && h.contradicting_evidence.length > 0 && (
-                      <div>
-                        <div className="text-[10px] uppercase tracking-widest text-red-500 font-semibold mb-1">Counter</div>
-                        {h.contradicting_evidence.map((e, i) => (
-                          <div key={i} className="text-[11px] text-gray-400 pl-3 border-l-2 border-red-500/40 mb-1">{e}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+        {incident.rca && (incident.rca.hypotheses?.length > 0 || incident.rca.insufficient_data) && (
+          <Panel title="RCA Hypotheses" accent="purple" badge={incident.rca.insufficient_data ? "Insufficient Data" : `${incident.rca.hypotheses.length} hypotheses`}>
+            {incident.rca.insufficient_data ? (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-sm flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <p>Insufficient data to generate reliable root cause hypotheses (requires at least 3 events). Please ingest more logs or events.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {incident.rca.hypotheses.map((h, index) => (
+                  <HypothesisCard
+                    key={h.id}
+                    hypothesis={h}
+                    index={index}
+                    events={incident.timeline?.events || []}
+                  />
+                ))}
+              </div>
+            )}
           </Panel>
         )}
 
@@ -364,6 +342,93 @@ function ImpactRow({ label, text }: { label: string; text: string }) {
     <div className="mb-4">
       <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">{label}</div>
       <p className="text-sm text-gray-300 leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+const EVIDENCE_BORDER_COLORS: Record<string, string> = {
+  strong: "border-l-teal-500",
+  moderate: "border-l-amber-500",
+  weak: "border-l-gray-500",
+};
+
+const EVIDENCE_BADGE_COLORS: Record<string, string> = {
+  strong: "bg-teal-500/15 text-teal-400",
+  moderate: "bg-amber-500/15 text-amber-400",
+  weak: "bg-gray-500/15 text-gray-400",
+};
+
+function HypothesisCard({ hypothesis: h, index, events }: { hypothesis: HypothesisType; index: number; events: Event[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const strength = h.evidence_strength || "weak";
+  const eventCount = h.supporting_event_ids?.length || 0;
+
+  // Resolve cited event IDs to their actual event objects from the timeline
+  const resolvedEvents = (h.supporting_event_ids || []).map(id => {
+    const found = events.find(e => e.event_id === id);
+    return found ? { id, description: found.description, source: found.evidence_source, type: found.event_type } : { id, description: null, source: null, type: null };
+  });
+
+  return (
+    <div className={cn(
+      "bg-white/[0.03] border border-white/[0.06] border-l-[3px] rounded-xl p-4 hover:border-white/[0.12] transition-all",
+      EVIDENCE_BORDER_COLORS[strength],
+    )}>
+      <div className="flex items-start gap-3 mb-2">
+        <span className={cn("w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold font-mono flex-shrink-0 mt-0.5",
+          index === 0 ? "bg-amber-500/20 text-amber-400" : "bg-white/[0.06] text-gray-500")}>
+          #{index + 1}
+        </span>
+        <div className="flex-1">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <span className="font-semibold text-sm">{h.text}</span>
+            <span className={cn("font-mono text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md flex-shrink-0",
+              h.confidence === "high" ? "bg-teal-500/15 text-teal-400" :
+              h.confidence === "medium" ? "bg-blue-500/15 text-blue-400" : "bg-amber-500/15 text-amber-400"
+            )}>{h.confidence}</span>
+          </div>
+          <div className="flex items-center flex-wrap gap-2 mb-2">
+            <span className="font-semibold text-gray-300 uppercase text-[10px] bg-white/[0.05] px-1.5 py-0.5 rounded">
+              {h.category}
+            </span>
+            <span className={cn("text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md", EVIDENCE_BADGE_COLORS[strength])}>
+              {strength}
+            </span>
+            <span className="text-xs text-gray-400">{h.recommended_action_hint}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Evidence anchor footer */}
+      {eventCount > 0 && (
+        <div className="mt-2">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer group"
+          >
+            <LinkIcon className="w-3 h-3" />
+            Supported by {eventCount} event{eventCount !== 1 ? "s" : ""}
+            {expanded ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+          </button>
+
+          {expanded && (
+            <div className="mt-2.5 space-y-2 pl-3 border-l-2 border-emerald-500/30 animate-in fade-in slide-in-from-top-1 duration-200">
+              {resolvedEvents.map((ev) => (
+                <div key={ev.id} className="bg-white/[0.02] border border-white/[0.05] rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">{ev.id}</span>
+                    {ev.type && <span className="text-[10px] text-gray-500 font-mono">{ev.type}</span>}
+                    {ev.source && <span className="text-[10px] text-gray-600 font-mono">via {ev.source}</span>}
+                  </div>
+                  <p className="text-[12px] text-gray-300 leading-relaxed">
+                    {ev.description || <span className="italic text-gray-600">Event not found in timeline</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

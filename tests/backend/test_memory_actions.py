@@ -27,18 +27,15 @@ def sample_hypotheses():
     return HypothesisList(
         hypotheses=[
             Hypothesis(
-                hypothesis_id="h1",
-                incident_id="test-123",
-                rank=1,
-                statement="DB Timeout",
-                confidence_score=90,
-                supporting_evidence=[],
-                contradicting_evidence=[],
-                missing_information=[],
+                id="H1",
+                text="DB Timeout",
+                supporting_event_ids=["evt-1"],
+                confidence="high",
+                category="infrastructure",
+                recommended_action_hint="Restart DB",
             )
         ],
-        analysis_confidence=90,
-        is_low_confidence=False,
+        insufficient_data=False,
     )
 
 

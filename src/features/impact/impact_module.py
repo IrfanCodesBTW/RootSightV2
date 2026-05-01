@@ -30,7 +30,7 @@ async def analyze_impact(incident: Incident, event_list: EventList, hypothesis_l
         Estimate the business and user impact of this incident.
         Service: {incident.service}
         Severity: {incident.severity}
-        Top cause: {top_hypothesis.statement if top_hypothesis else "Unknown"} ({top_hypothesis.confidence_score if top_hypothesis else 0}% confidence)
+        Top cause: {top_hypothesis.text if top_hypothesis else "Unknown"} ({top_hypothesis.confidence if top_hypothesis else "low"} confidence)
         Key events: {json.dumps(top_3_events, indent=2)}
 
         Return ONLY valid JSON:

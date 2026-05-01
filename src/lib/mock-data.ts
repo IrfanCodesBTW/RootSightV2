@@ -88,38 +88,22 @@ function makeMockEvents(incidentId: string): Event[] {
 function makeMockHypotheses(incidentId: string): Hypothesis[] {
   return [
     {
-      hypothesis_id: randomId(),
-      incident_id: incidentId,
-      rank: 1,
-      statement: "Cache purge triggered thundering herd on origin",
-      confidence_score: 87,
-      supporting_evidence: [
-        "CDN cache purge at T-8min",
-        "Origin CPU spike to 98%",
-        "502 rate correlated with purge timing",
-      ],
-      contradicting_evidence: ["No change in traffic volume"],
-      missing_information: ["CDN cache hit ratio metrics", "Origin connection pool stats"],
-      recommended_check: "Review CDN purge policy and origin autoscaling",
-      severity_band: null,
+      id: randomId(),
+      text: "Cache purge triggered thundering herd on origin",
+      supporting_event_ids: [randomId(), randomId(), randomId()],
+      evidence_strength: "strong",
+      confidence: "high",
+      category: "infrastructure",
+      recommended_action_hint: "Review CDN purge policy and origin autoscaling",
     },
     {
-      hypothesis_id: randomId(),
-      incident_id: incidentId,
-      rank: 2,
-      statement: "Deployment v2.4.1 introduced regression in request handling",
-      confidence_score: 62,
-      supporting_evidence: [
-        "Timing correlates with deployment",
-        "Error rate increase post-deploy",
-      ],
-      contradicting_evidence: [
-        "Canary tests passed",
-        "CPU issue started before deploy completed",
-      ],
-      missing_information: ["Diff of v2.4.0 → v2.4.1", "Canary error rates"],
-      recommended_check: "Compare request handling between versions",
-      severity_band: null,
+      id: randomId(),
+      text: "Deployment v2.4.1 introduced regression in request handling",
+      supporting_event_ids: [randomId()],
+      evidence_strength: "weak",
+      confidence: "medium",
+      category: "application",
+      recommended_action_hint: "Compare request handling between versions",
     },
   ];
 }
@@ -226,9 +210,7 @@ export function generateMockIncident(incidentId?: string): Incident {
     },
     rca: {
       hypotheses: makeMockHypotheses(id),
-      analysis_confidence: 80,
-      is_low_confidence: false,
-      analysis_note: null,
+      insufficient_data: false,
     },
     impact: makeMockImpact(id),
     memory: {
