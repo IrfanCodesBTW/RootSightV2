@@ -50,7 +50,7 @@ copy .env.example .env
 python scripts/build_memory_index.py
 
 # Launch the Streamlit UI
-streamlit run ui/app.py
+python -m uvicorn app:app --port 8000
 ```
 
 ### Run Tests
@@ -82,7 +82,6 @@ src/
 ├── services/         # Business logic (normalizer, vector store, persistence)
 └── utils/            # Helpers (logging)
 
-ui/                   # Streamlit demo application
 data/                 # Seed data, mock responses, incident storage
 ```
 

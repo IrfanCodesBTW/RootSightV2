@@ -107,9 +107,9 @@ def main():
     print(f"   Index:    {index_path}")
     print(f"   Metadata: {metadata_path}")
     print(f"   Incidents: {vector_store.count}")
-    print("\n" + "=" * 60)
-    print("  Ready! Run: streamlit run ui/app.py")
-    print("=" * 60 + "\n")
+    print("\n" + "============================================================")
+    print("  Ready! The memory index is built.")
+    print("============================================================")
 
 
 if __name__ == "__main__":
